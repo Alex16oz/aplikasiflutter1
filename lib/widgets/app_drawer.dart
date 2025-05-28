@@ -1,7 +1,7 @@
 // lib/widgets/app_drawer.dart
 import 'package:flutter/material.dart';
 
-// Import all your page files
+// Import all your page files to access their routeName constants
 import '../pages/dashboard_page.dart';
 import '../pages/user_profile_page.dart';
 import '../pages/attendance_page.dart';
@@ -17,21 +17,19 @@ import '../pages/about_page.dart';
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
 
-  // Helper method to navigate
-  void _navigateToPage(BuildContext context, Widget page) {
-    Navigator.pop(context); // Close the drawer
+  // Helper method to navigate using named routes
+  void _navigateToPage(BuildContext context, String routeName) {
+    // Close the drawer first
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
 
-    // Check if the current route is the same as the page we want to navigate to
-    // This prevents pushing the same page multiple times onto the stack
-    // Note: This is a simple check. For more complex scenarios, you might need a more robust solution.
-    if (ModalRoute.of(context)?.settings.name != page.toStringShort()) {
-      Navigator.pushReplacement( // Use pushReplacement to avoid building up the stack
-        context,
-        MaterialPageRoute(
-          builder: (context) => page,
-          settings: RouteSettings(name: page.toStringShort()), // Set route name for checking
-        ),
-      );
+    // Get the current route's name
+    final String? currentRouteName = ModalRoute.of(context)?.settings.name;
+
+    // Only navigate if the new route is different from the current one
+    if (currentRouteName != routeName) {
+      Navigator.pushReplacementNamed(context, routeName);
     }
   }
 
@@ -73,9 +71,9 @@ class AppDrawer extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.dashboard),
             title: const Text('Dashboard'),
-            selected: currentRouteName == const DashboardPage().toStringShort(),
+            selected: currentRouteName == DashboardPage.routeName,
             onTap: () {
-              _navigateToPage(context, const DashboardPage());
+              _navigateToPage(context, DashboardPage.routeName);
             },
           ),
           // Separator for User
@@ -83,17 +81,17 @@ class AppDrawer extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.person_outline),
             title: const Text('User Profile'),
-            selected: currentRouteName == const UserProfilePage().toStringShort(),
+            selected: currentRouteName == UserProfilePage.routeName,
             onTap: () {
-              _navigateToPage(context, const UserProfilePage());
+              _navigateToPage(context, UserProfilePage.routeName);
             },
           ),
           ListTile(
             leading: const Icon(Icons.check_circle_outline),
             title: const Text('Attendance'),
-            selected: currentRouteName == const AttendancePage().toStringShort(),
+            selected: currentRouteName == AttendancePage.routeName,
             onTap: () {
-              _navigateToPage(context, const AttendancePage());
+              _navigateToPage(context, AttendancePage.routeName);
             },
           ),
           // Separator for Data
@@ -101,25 +99,25 @@ class AppDrawer extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.store_mall_directory),
             title: const Text('Warehouse'),
-            selected: currentRouteName == const WarehousePage().toStringShort(),
+            selected: currentRouteName == WarehousePage.routeName,
             onTap: () {
-              _navigateToPage(context, const WarehousePage());
+              _navigateToPage(context, WarehousePage.routeName);
             },
           ),
           ListTile(
             leading: const Icon(Icons.schedule),
             title: const Text('Schedule'),
-            selected: currentRouteName == const SchedulePage().toStringShort(),
+            selected: currentRouteName == SchedulePage.routeName,
             onTap: () {
-              _navigateToPage(context, const SchedulePage());
+              _navigateToPage(context, SchedulePage.routeName);
             },
           ),
           ListTile(
             leading: const Icon(Icons.build_circle_outlined),
             title: const Text('Spareparts'),
-            selected: currentRouteName == const SparepartsPage().toStringShort(),
+            selected: currentRouteName == SparepartsPage.routeName,
             onTap: () {
-              _navigateToPage(context, const SparepartsPage());
+              _navigateToPage(context, SparepartsPage.routeName);
             },
           ),
           // Separator for Reports
@@ -127,25 +125,25 @@ class AppDrawer extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.receipt_long),
             title: const Text('Repair Reports'),
-            selected: currentRouteName == const RepairReportsPage().toStringShort(),
+            selected: currentRouteName == RepairReportsPage.routeName,
             onTap: () {
-              _navigateToPage(context, const RepairReportsPage());
+              _navigateToPage(context, RepairReportsPage.routeName);
             },
           ),
           ListTile(
             leading: const Icon(Icons.warning_amber_outlined),
             title: const Text('Damage Reports'),
-            selected: currentRouteName == const DamageReportsPage().toStringShort(),
+            selected: currentRouteName == DamageReportsPage.routeName,
             onTap: () {
-              _navigateToPage(context, const DamageReportsPage());
+              _navigateToPage(context, DamageReportsPage.routeName);
             },
           ),
           ListTile(
             leading: const Icon(Icons.event_note_outlined),
             title: const Text('Attendance Reports'),
-            selected: currentRouteName == const AttendanceReportsPage().toStringShort(),
+            selected: currentRouteName == AttendanceReportsPage.routeName,
             onTap: () {
-              _navigateToPage(context, const AttendanceReportsPage());
+              _navigateToPage(context, AttendanceReportsPage.routeName);
             },
           ),
           // Separator for System
@@ -153,18 +151,18 @@ class AppDrawer extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.settings),
             title: const Text('Settings'),
-            selected: currentRouteName == const SettingsPage().toStringShort(),
+            selected: currentRouteName == SettingsPage.routeName,
             onTap: () {
-              _navigateToPage(context, const SettingsPage());
+              _navigateToPage(context, SettingsPage.routeName);
             },
           ),
           const Divider(), // Visual separator before About
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: const Text('About'),
-            selected: currentRouteName == const AboutPage().toStringShort(),
+            selected: currentRouteName == AboutPage.routeName,
             onTap: () {
-              _navigateToPage(context, const AboutPage());
+              _navigateToPage(context, AboutPage.routeName);
             },
           ),
         ],

@@ -1,5 +1,18 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
-import 'pages/dashboard_page.dart'; // Import DashboardPage
+
+// Import all page files for route definitions
+import 'pages/dashboard_page.dart';
+import 'pages/user_profile_page.dart';
+import 'pages/attendance_page.dart';
+import 'pages/warehouse_page.dart';
+import 'pages/schedule_page.dart';
+import 'pages/spareparts_page.dart';
+import 'pages/repair_reports_page.dart';
+import 'pages/damage_reports_page.dart';
+import 'pages/attendance_reports_page.dart';
+import 'pages/settings_page.dart';
+import 'pages/about_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -29,7 +42,22 @@ class MyApp extends StatelessWidget {
         // colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1EF1C9)),
         // useMaterial3: true,
       ),
-      home: const DashboardPage(), // DashboardPage is now the home screen
+      // Define the initial route
+      initialRoute: DashboardPage.routeName,
+      // Define all named routes
+      routes: {
+        DashboardPage.routeName: (context) => const DashboardPage(),
+        UserProfilePage.routeName: (context) => const UserProfilePage(),
+        AttendancePage.routeName: (context) => const AttendancePage(),
+        WarehousePage.routeName: (context) => const WarehousePage(),
+        SchedulePage.routeName: (context) => const SchedulePage(),
+        SparepartsPage.routeName: (context) => const SparepartsPage(),
+        RepairReportsPage.routeName: (context) => const RepairReportsPage(),
+        DamageReportsPage.routeName: (context) => const DamageReportsPage(),
+        AttendanceReportsPage.routeName: (context) => const AttendanceReportsPage(),
+        SettingsPage.routeName: (context) => const SettingsPage(),
+        AboutPage.routeName: (context) => const AboutPage(),
+      },
       debugShowCheckedModeBanner: false, // Optional: removes the debug banner
     );
   }

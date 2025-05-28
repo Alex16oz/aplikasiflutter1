@@ -1,8 +1,11 @@
+// lib/pages/warehouse_page.dart
 import 'package:flutter/material.dart';
 import '../widgets/app_drawer.dart'; // Import the AppDrawer
 
 class WarehousePage extends StatelessWidget {
   const WarehousePage({super.key});
+
+  static const String routeName = '/warehouse';
 
   @override
   Widget build(BuildContext context) {
@@ -10,7 +13,7 @@ class WarehousePage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Warehouse'),
       ),
-      drawer: const AppDrawer(), // Add the AppDrawer
+      drawer: const AppDrawer(),
       body: const Center(
         child: Text(
           'Warehouse Page Content',
