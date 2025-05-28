@@ -1,5 +1,18 @@
 import 'package:flutter/material.dart';
 
+// Import your new page files
+import 'pages/dashboard_page.dart';
+import 'pages/user_profile_page.dart';
+import 'pages/attendance_page.dart';
+import 'pages/warehouse_page.dart';
+import 'pages/schedule_page.dart';
+import 'pages/spareparts_page.dart';
+import 'pages/repair_reports_page.dart';
+import 'pages/damage_reports_page.dart';
+import 'pages/attendance_reports_page.dart';
+import 'pages/settings_page.dart';
+import 'pages/about_page.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -12,13 +25,15 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter AppBar Demo',
       theme: ThemeData(
-        // Using a specific hex color for the primary color
-        primaryColor: const Color(0xFF1EF1C9), // A deep blue color
-        // You can further define your color scheme if needed:
-        // colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0D47A1)),
-        // useMaterial3: true, // Optional: to use Material 3 design
+        primaryColor: const Color(0xFF1EF1C9),
       ),
       home: const SimplePageWithAppBar(),
+      // You can also define routes here for more complex navigation
+      // routes: {
+      //   '/dashboard': (context) => const DashboardPage(),
+      //   '/userProfile': (context) => const UserProfilePage(),
+      //   // ... other routes
+      // },
     );
   }
 }
@@ -26,18 +41,20 @@ class MyApp extends StatelessWidget {
 class SimplePageWithAppBar extends StatelessWidget {
   const SimplePageWithAppBar({super.key});
 
+  // Helper method to navigate
+  void _navigateToPage(BuildContext context, Widget page) {
+    Navigator.pop(context); // Close the drawer
+    Navigator.push(context, MaterialPageRoute(builder: (context) => page));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Simple Page'),
-        // Using a specific hex color for the AppBar background
-        backgroundColor: const Color(0xFF1EF1C9), // Amber color
+        backgroundColor: const Color(0xFF1EF1C9),
         elevation: 8.0,
         centerTitle: true,
-        // IconTheme for AppBar icons, if needed, can be set here or in ThemeData
-        // iconTheme: IconThemeData(color: const Color(0xFFFFFFFF)), // Example: White icons
-        // titleTextStyle: TextStyle(color: const Color(0xFF000000)), // Example: Black title
       ),
       drawer: Drawer(
         child: ListView(
@@ -47,39 +64,33 @@ class SimplePageWithAppBar extends StatelessWidget {
               accountName: const Text(
                 'John Doe',
                 style: TextStyle(
-                  // Using a specific hex color for text
-                  color: Color(0xFFFFFFFF), // White color
+                  color: Color(0xFFFFFFFF),
                   fontWeight: FontWeight.bold,
                 ),
               ),
               accountEmail: const Text(
                 'john.doe@example.com',
                 style: TextStyle(
-                  // Using a specific hex color with opacity for text
-                  color: Color(0xB3FFFFFF), // White color with 70% opacity
+                  color: Color(0xB3FFFFFF),
                 ),
               ),
               currentAccountPicture: CircleAvatar(
-                // Using a specific hex color for the avatar background
-                backgroundColor: const Color(0xFFFFFFFF), // White color
+                backgroundColor: const Color(0xFFFFFFFF),
                 child: Icon(
                   Icons.person,
                   size: 50.0,
-                  // Using a specific hex color for the icon
-                  color: const Color(0xFF1976D2), // A medium blue color
+                  color: const Color(0xFF1976D2),
                 ),
               ),
               decoration: BoxDecoration(
-                // Using a specific hex color for the header background
-                color: const Color(0xFF1976D2), // A medium blue color
+                color: const Color(0xFF1976D2),
               ),
             ),
             ListTile(
               leading: const Icon(Icons.dashboard),
               title: const Text('Dashboard'),
               onTap: () {
-                print('Dashboard tapped');
-                Navigator.pop(context);
+                _navigateToPage(context, const DashboardPage());
               },
             ),
             // Separator for User
@@ -90,7 +101,7 @@ class SimplePageWithAppBar extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12.0,
                   fontWeight: FontWeight.bold,
-                  color: Colors.grey, // Or your desired color
+                  color: Colors.grey,
                 ),
               ),
             ),
@@ -98,16 +109,14 @@ class SimplePageWithAppBar extends StatelessWidget {
               leading: const Icon(Icons.person_outline),
               title: const Text('User Profile'),
               onTap: () {
-                print('User Profile tapped');
-                Navigator.pop(context);
+                _navigateToPage(context, const UserProfilePage());
               },
             ),
             ListTile(
               leading: const Icon(Icons.check_circle_outline),
               title: const Text('Attendance'),
               onTap: () {
-                print('Attendance tapped');
-                Navigator.pop(context);
+                _navigateToPage(context, const AttendancePage());
               },
             ),
             // Separator for Data
@@ -118,7 +127,7 @@ class SimplePageWithAppBar extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12.0,
                   fontWeight: FontWeight.bold,
-                  color: Colors.grey, // Or your desired color
+                  color: Colors.grey,
                 ),
               ),
             ),
@@ -126,24 +135,21 @@ class SimplePageWithAppBar extends StatelessWidget {
               leading: const Icon(Icons.store_mall_directory),
               title: const Text('Warehouse'),
               onTap: () {
-                print('Warehouse tapped');
-                Navigator.pop(context);
+                _navigateToPage(context, const WarehousePage());
               },
             ),
             ListTile(
               leading: const Icon(Icons.schedule),
               title: const Text('Schedule'),
               onTap: () {
-                print('Schedule tapped');
-                Navigator.pop(context);
+                _navigateToPage(context, const SchedulePage());
               },
             ),
             ListTile(
               leading: const Icon(Icons.build_circle_outlined),
               title: const Text('Spareparts'),
               onTap: () {
-                print('Spareparts tapped');
-                Navigator.pop(context);
+                _navigateToPage(context, const SparepartsPage());
               },
             ),
             // Separator for Reports
@@ -154,7 +160,7 @@ class SimplePageWithAppBar extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12.0,
                   fontWeight: FontWeight.bold,
-                  color: Colors.grey, // Or your desired color
+                  color: Colors.grey,
                 ),
               ),
             ),
@@ -162,25 +168,21 @@ class SimplePageWithAppBar extends StatelessWidget {
               leading: const Icon(Icons.receipt_long),
               title: const Text('Repair Reports'),
               onTap: () {
-                print('Repair Reports tapped');
-                Navigator.pop(context);
+                _navigateToPage(context, const RepairReportsPage());
               },
             ),
             ListTile(
               leading: const Icon(Icons.warning_amber_outlined),
               title: const Text('Damage Reports'),
               onTap: () {
-                print('Damage Reports tapped');
-                Navigator.pop(context);
+                _navigateToPage(context, const DamageReportsPage());
               },
             ),
-            // New "Attendance Reports" item
             ListTile(
-              leading: const Icon(Icons.event_note_outlined), // Example icon
+              leading: const Icon(Icons.event_note_outlined),
               title: const Text('Attendance Reports'),
               onTap: () {
-                print('Attendance Reports tapped');
-                Navigator.pop(context);
+                _navigateToPage(context, const AttendanceReportsPage());
               },
             ),
             // Separator for System
@@ -191,7 +193,7 @@ class SimplePageWithAppBar extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12.0,
                   fontWeight: FontWeight.bold,
-                  color: Colors.grey, // Or your desired color
+                  color: Colors.grey,
                 ),
               ),
             ),
@@ -199,16 +201,14 @@ class SimplePageWithAppBar extends StatelessWidget {
               leading: const Icon(Icons.settings),
               title: const Text('Settings'),
               onTap: () {
-                print('Settings tapped');
-                Navigator.pop(context);
+                _navigateToPage(context, const SettingsPage());
               },
             ),
             ListTile(
               leading: const Icon(Icons.info_outline),
               title: const Text('About'),
               onTap: () {
-                print('About tapped');
-                Navigator.pop(context);
+                _navigateToPage(context, const AboutPage());
               },
             ),
           ],
