@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/app_drawer.dart'; // Import the AppDrawer
 
 class SchedulePage extends StatelessWidget {
   const SchedulePage({super.key});
@@ -8,10 +9,13 @@ class SchedulePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Schedule'),
-        backgroundColor: const Color(0xFF1EF1C9), // Consistent AppBar color
       ),
+      drawer: const AppDrawer(), // Add the AppDrawer
       body: const Center(
-        child: Text('This is the Schedule Page.'),
+        child: Text(
+          'Schedule Page Content',
+          style: TextStyle(fontSize: 20),
+        ),
       ),
     );
   }

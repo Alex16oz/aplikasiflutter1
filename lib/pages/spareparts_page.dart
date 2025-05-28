@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/app_drawer.dart'; // Import the AppDrawer
 
 class SparepartsPage extends StatelessWidget {
   const SparepartsPage({super.key});
@@ -8,10 +9,13 @@ class SparepartsPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Spareparts'),
-        backgroundColor: const Color(0xFF1EF1C9), // Consistent AppBar color
       ),
+      drawer: const AppDrawer(), // Add the AppDrawer
       body: const Center(
-        child: Text('This is the Spareparts Page.'),
+        child: Text(
+          'Spareparts Page Content',
+          style: TextStyle(fontSize: 20),
+        ),
       ),
     );
   }

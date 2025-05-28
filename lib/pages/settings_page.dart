@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/app_drawer.dart'; // Import the AppDrawer
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -8,10 +9,13 @@ class SettingsPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
-        backgroundColor: const Color(0xFF1EF1C9), // Consistent AppBar color
       ),
+      drawer: const AppDrawer(), // Add the AppDrawer
       body: const Center(
-        child: Text('This is the Settings Page.'),
+        child: Text(
+          'Settings Page Content',
+          style: TextStyle(fontSize: 20),
+        ),
       ),
     );
   }

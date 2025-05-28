@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/app_drawer.dart'; // Import the AppDrawer
 
 class AttendanceReportsPage extends StatelessWidget {
   const AttendanceReportsPage({super.key});
@@ -8,10 +9,13 @@ class AttendanceReportsPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Attendance Reports'),
-        backgroundColor: const Color(0xFF1EF1C9), // Consistent AppBar color
       ),
+      drawer: const AppDrawer(), // Add the AppDrawer
       body: const Center(
-        child: Text('This is the Attendance Reports Page.'),
+        child: Text(
+          'Attendance Reports Page Content',
+          style: TextStyle(fontSize: 20),
+        ),
       ),
     );
   }
