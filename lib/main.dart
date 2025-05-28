@@ -82,6 +82,18 @@ class SimplePageWithAppBar extends StatelessWidget {
                 Navigator.pop(context);
               },
             ),
+            // Separator for User
+            const Padding(
+              padding: EdgeInsets.only(left: 16.0, top: 10.0, bottom: 5.0),
+              child: Text(
+                'USER',
+                style: TextStyle(
+                  fontSize: 12.0,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey, // Or your desired color
+                ),
+              ),
+            ),
             ListTile(
               leading: const Icon(Icons.person_outline),
               title: const Text('User Profile'),
@@ -97,6 +109,18 @@ class SimplePageWithAppBar extends StatelessWidget {
                 print('Attendance tapped');
                 Navigator.pop(context);
               },
+            ),
+            // Separator for Data
+            const Padding(
+              padding: EdgeInsets.only(left: 16.0, top: 10.0, bottom: 5.0),
+              child: Text(
+                'DATA',
+                style: TextStyle(
+                  fontSize: 12.0,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey, // Or your desired color
+                ),
+              ),
             ),
             ListTile(
               leading: const Icon(Icons.store_mall_directory),
@@ -122,6 +146,18 @@ class SimplePageWithAppBar extends StatelessWidget {
                 Navigator.pop(context);
               },
             ),
+            // Separator for Reports
+            const Padding(
+              padding: EdgeInsets.only(left: 16.0, top: 10.0, bottom: 5.0),
+              child: Text(
+                'REPORTS',
+                style: TextStyle(
+                  fontSize: 12.0,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey, // Or your desired color
+                ),
+              ),
+            ),
             ListTile(
               leading: const Icon(Icons.receipt_long),
               title: const Text('Repair Reports'),
@@ -137,6 +173,27 @@ class SimplePageWithAppBar extends StatelessWidget {
                 print('Damage Reports tapped');
                 Navigator.pop(context);
               },
+            ),
+            // New "Attendance Reports" item
+            ListTile(
+              leading: const Icon(Icons.event_note_outlined), // Example icon
+              title: const Text('Attendance Reports'),
+              onTap: () {
+                print('Attendance Reports tapped');
+                Navigator.pop(context);
+              },
+            ),
+            // Separator for System
+            const Padding(
+              padding: EdgeInsets.only(left: 16.0, top: 10.0, bottom: 5.0),
+              child: Text(
+                'SYSTEM',
+                style: TextStyle(
+                  fontSize: 12.0,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey, // Or your desired color
+                ),
+              ),
             ),
             ListTile(
               leading: const Icon(Icons.settings),
