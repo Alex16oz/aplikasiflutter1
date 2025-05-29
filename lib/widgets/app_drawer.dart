@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../pages/dashboard_page.dart';
 import '../pages/user_profile_page.dart';
 import '../pages/attendance_page.dart';
+import '../pages/user_management_page.dart'; // <-- IMPORT NEW PAGE
 import '../pages/warehouse_page.dart';
 import '../pages/schedule_page.dart';
 import '../pages/spareparts_page.dart';
@@ -94,6 +95,16 @@ class AppDrawer extends StatelessWidget {
               _navigateToPage(context, AttendancePage.routeName);
             },
           ),
+          // START NEW PAGE ENTRY
+          ListTile(
+            leading: const Icon(Icons.manage_accounts_outlined), // Example Icon
+            title: const Text('User Management'),
+            selected: currentRouteName == UserManagementPage.routeName,
+            onTap: () {
+              _navigateToPage(context, UserManagementPage.routeName);
+            },
+          ),
+          // END NEW PAGE ENTRY
           // Separator for Data
           const _DrawerSectionHeader(title: 'DATA'),
           ListTile(

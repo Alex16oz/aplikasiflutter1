@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'pages/dashboard_page.dart';
 import 'pages/user_profile_page.dart';
 import 'pages/attendance_page.dart';
+import 'pages/user_management_page.dart'; // <-- IMPORT NEW PAGE
 import 'pages/warehouse_page.dart';
 import 'pages/schedule_page.dart';
 import 'pages/spareparts_page.dart';
@@ -49,6 +50,7 @@ class MyApp extends StatelessWidget {
         DashboardPage.routeName: (context) => const DashboardPage(),
         UserProfilePage.routeName: (context) => const UserProfilePage(),
         AttendancePage.routeName: (context) => const AttendancePage(),
+        UserManagementPage.routeName: (context) => const UserManagementPage(), // <-- ADD NEW ROUTE
         WarehousePage.routeName: (context) => const WarehousePage(),
         SchedulePage.routeName: (context) => const SchedulePage(),
         SparepartsPage.routeName: (context) => const SparepartsPage(),
