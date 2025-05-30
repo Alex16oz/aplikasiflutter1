@@ -2,10 +2,11 @@
 import 'package:flutter/material.dart';
 
 // Import all page files for route definitions
+import 'pages/login_page.dart'; // <-- IMPORT NEW LOGIN PAGE
 import 'pages/dashboard_page.dart';
 import 'pages/user_profile_page.dart';
 import 'pages/attendance_page.dart';
-import 'pages/user_management_page.dart'; // <-- IMPORT NEW PAGE
+import 'pages/user_management_page.dart';
 import 'pages/warehouse_page.dart';
 import 'pages/schedule_page.dart';
 import 'pages/spareparts_page.dart';
@@ -44,13 +45,14 @@ class MyApp extends StatelessWidget {
         // useMaterial3: true,
       ),
       // Define the initial route
-      initialRoute: DashboardPage.routeName,
+      initialRoute: LoginPage.routeName, // <-- SET LOGIN PAGE AS INITIAL
       // Define all named routes
       routes: {
+        LoginPage.routeName: (context) => const LoginPage(), // <-- ADD LOGIN ROUTE
         DashboardPage.routeName: (context) => const DashboardPage(),
         UserProfilePage.routeName: (context) => const UserProfilePage(),
         AttendancePage.routeName: (context) => const AttendancePage(),
-        UserManagementPage.routeName: (context) => const UserManagementPage(), // <-- ADD NEW ROUTE
+        UserManagementPage.routeName: (context) => const UserManagementPage(),
         WarehousePage.routeName: (context) => const WarehousePage(),
         SchedulePage.routeName: (context) => const SchedulePage(),
         SparepartsPage.routeName: (context) => const SparepartsPage(),

@@ -2,10 +2,11 @@
 import 'package:flutter/material.dart';
 
 // Import all your page files to access their routeName constants
+import '../pages/login_page.dart'; // <-- IMPORT LOGIN PAGE
 import '../pages/dashboard_page.dart';
 import '../pages/user_profile_page.dart';
 import '../pages/attendance_page.dart';
-import '../pages/user_management_page.dart'; // <-- IMPORT NEW PAGE
+import '../pages/user_management_page.dart';
 import '../pages/warehouse_page.dart';
 import '../pages/schedule_page.dart';
 import '../pages/spareparts_page.dart';
@@ -19,7 +20,7 @@ class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
 
   // Helper method to navigate using named routes
-  void _navigateToPage(BuildContext context, String routeName) {
+  void _navigateToPage(BuildContext context, String routeName, {bool replace = false}) {
     // Close the drawer first
     if (Navigator.canPop(context)) {
       Navigator.pop(context);
@@ -30,7 +31,11 @@ class AppDrawer extends StatelessWidget {
 
     // Only navigate if the new route is different from the current one
     if (currentRouteName != routeName) {
-      Navigator.pushReplacementNamed(context, routeName);
+      if (replace) {
+        Navigator.pushReplacementNamed(context, routeName);
+      } else {
+        Navigator.pushNamed(context, routeName);
+      }
     }
   }
 
@@ -45,14 +50,14 @@ class AppDrawer extends StatelessWidget {
         children: <Widget>[
           UserAccountsDrawerHeader(
             accountName: const Text(
-              'John Doe',
+              'John Doe', // TODO: Replace with actual user data
               style: TextStyle(
                 color: Color(0xFFFFFFFF),
                 fontWeight: FontWeight.bold,
               ),
             ),
             accountEmail: const Text(
-              'john.doe@example.com',
+              'john.doe@example.com', // TODO: Replace with actual user data
               style: TextStyle(
                 color: Color(0xB3FFFFFF), // White with 70% opacity
               ),
@@ -74,7 +79,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Dashboard'),
             selected: currentRouteName == DashboardPage.routeName,
             onTap: () {
-              _navigateToPage(context, DashboardPage.routeName);
+              _navigateToPage(context, DashboardPage.routeName, replace: true);
             },
           ),
           // Separator for User
@@ -84,7 +89,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('User Profile'),
             selected: currentRouteName == UserProfilePage.routeName,
             onTap: () {
-              _navigateToPage(context, UserProfilePage.routeName);
+              _navigateToPage(context, UserProfilePage.routeName, replace: true);
             },
           ),
           ListTile(
@@ -92,19 +97,17 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Attendance'),
             selected: currentRouteName == AttendancePage.routeName,
             onTap: () {
-              _navigateToPage(context, AttendancePage.routeName);
+              _navigateToPage(context, AttendancePage.routeName, replace: true);
             },
           ),
-          // START NEW PAGE ENTRY
           ListTile(
-            leading: const Icon(Icons.manage_accounts_outlined), // Example Icon
+            leading: const Icon(Icons.manage_accounts_outlined),
             title: const Text('User Management'),
             selected: currentRouteName == UserManagementPage.routeName,
             onTap: () {
-              _navigateToPage(context, UserManagementPage.routeName);
+              _navigateToPage(context, UserManagementPage.routeName, replace: true);
             },
           ),
-          // END NEW PAGE ENTRY
           // Separator for Data
           const _DrawerSectionHeader(title: 'DATA'),
           ListTile(
@@ -112,7 +115,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Warehouse'),
             selected: currentRouteName == WarehousePage.routeName,
             onTap: () {
-              _navigateToPage(context, WarehousePage.routeName);
+              _navigateToPage(context, WarehousePage.routeName, replace: true);
             },
           ),
           ListTile(
@@ -120,7 +123,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Schedule'),
             selected: currentRouteName == SchedulePage.routeName,
             onTap: () {
-              _navigateToPage(context, SchedulePage.routeName);
+              _navigateToPage(context, SchedulePage.routeName, replace: true);
             },
           ),
           ListTile(
@@ -128,7 +131,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Spareparts'),
             selected: currentRouteName == SparepartsPage.routeName,
             onTap: () {
-              _navigateToPage(context, SparepartsPage.routeName);
+              _navigateToPage(context, SparepartsPage.routeName, replace: true);
             },
           ),
           // Separator for Reports
@@ -138,7 +141,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Repair Reports'),
             selected: currentRouteName == RepairReportsPage.routeName,
             onTap: () {
-              _navigateToPage(context, RepairReportsPage.routeName);
+              _navigateToPage(context, RepairReportsPage.routeName, replace: true);
             },
           ),
           ListTile(
@@ -146,7 +149,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Damage Reports'),
             selected: currentRouteName == DamageReportsPage.routeName,
             onTap: () {
-              _navigateToPage(context, DamageReportsPage.routeName);
+              _navigateToPage(context, DamageReportsPage.routeName, replace: true);
             },
           ),
           ListTile(
@@ -154,7 +157,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Attendance Reports'),
             selected: currentRouteName == AttendanceReportsPage.routeName,
             onTap: () {
-              _navigateToPage(context, AttendanceReportsPage.routeName);
+              _navigateToPage(context, AttendanceReportsPage.routeName, replace: true);
             },
           ),
           // Separator for System
@@ -164,16 +167,25 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Settings'),
             selected: currentRouteName == SettingsPage.routeName,
             onTap: () {
-              _navigateToPage(context, SettingsPage.routeName);
+              _navigateToPage(context, SettingsPage.routeName, replace: true);
             },
           ),
-          const Divider(), // Visual separator before About
+          const Divider(), // Visual separator
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: const Text('About'),
             selected: currentRouteName == AboutPage.routeName,
             onTap: () {
-              _navigateToPage(context, AboutPage.routeName);
+              _navigateToPage(context, AboutPage.routeName, replace: true);
+            },
+          ),
+          const Divider(), // Visual separator
+          ListTile( // <-- ADD LOGOUT TILE
+            leading: const Icon(Icons.logout),
+            title: const Text('Logout'),
+            onTap: () {
+              // TODO: Implement actual logout logic (clear session, etc.)
+              _navigateToPage(context, LoginPage.routeName, replace: true); // Navigate to login
             },
           ),
         ],
