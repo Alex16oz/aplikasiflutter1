@@ -17,6 +17,10 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
 
+  // FocusNodes to manage focus
+  final FocusNode _emailFocusNode = FocusNode();
+  final FocusNode _passwordFocusNode = FocusNode();
+
   void _login() {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -39,6 +43,8 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _emailFocusNode.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
   }
 
@@ -84,6 +90,7 @@ class _LoginPageState extends State<LoginPage> {
                 // Email TextFormField
                 TextFormField(
                   controller: _emailController,
+                  focusNode: _emailFocusNode, // Assign focus node
                   decoration: InputDecoration(
                     labelText: 'Email',
                     hintText: 'Enter your email',
@@ -102,12 +109,18 @@ class _LoginPageState extends State<LoginPage> {
                     }
                     return null;
                   },
+                  // Move to password field on "Enter"
+                  onFieldSubmitted: (_) {
+                    FocusScope.of(context).requestFocus(_passwordFocusNode);
+                  },
+                  textInputAction: TextInputAction.next, // Show "next" button on keyboard
                 ),
                 const SizedBox(height: 20.0),
 
                 // Password TextFormField
                 TextFormField(
                   controller: _passwordController,
+                  focusNode: _passwordFocusNode, // Assign focus node
                   decoration: InputDecoration(
                     labelText: 'Password',
                     hintText: 'Enter your password',
@@ -127,6 +140,11 @@ class _LoginPageState extends State<LoginPage> {
                     }
                     return null;
                   },
+                  // Call _login on "Enter"
+                  onFieldSubmitted: (_) {
+                    _login();
+                  },
+                  textInputAction: TextInputAction.done, // Show "done" or "go" button on keyboard
                 ),
                 const SizedBox(height: 30.0),
 
