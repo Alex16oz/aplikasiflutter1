@@ -2,10 +2,25 @@
 import 'package:flutter/material.dart';
 import '../widgets/app_drawer.dart'; // Import the AppDrawer
 
-class UserProfilePage extends StatelessWidget {
+class UserProfilePage extends StatefulWidget { // Changed to StatefulWidget
   const UserProfilePage({super.key});
 
   static const String routeName = '/user-profile';
+
+  @override
+  State<UserProfilePage> createState() => _UserProfilePageState();
+}
+
+class _UserProfilePageState extends State<UserProfilePage> { // Created State
+  // Placeholder for dropdown value, not strictly needed if not displaying selected item in button
+  // String? _selectedAction;
+
+  // Define the dropdown items
+  final List<String> _editOptions = [
+    'Edit Password',
+    'Edit Username',
+    'Edit Email'
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -57,25 +72,68 @@ class UserProfilePage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16.0), // Spacing between Card and Button
-            // Edit Profile Button
+            // Edit Profile DropdownButton
             Align(
               alignment: Alignment.centerRight,
-              child: ElevatedButton(
-                onPressed: () {
-                  // TODO: Implement edit profile functionality
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Edit Profile button pressed')),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  foregroundColor: Colors.black, // Text color for the button
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+              child: Container( // Wrap DropdownButton in a Container for styling if needed
+                padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColor,
+                  borderRadius: BorderRadius.circular(8.0),
                 ),
-                child: const Text('Edit Profile'),
+                child: DropdownButtonHideUnderline( // Removes the default underline
+                  child: DropdownButton<String>(
+                    hint: const Text(
+                      'Edit Profile',
+                      style: TextStyle(color: Colors.black), // Match ElevatedButton text color
+                    ),
+                    // value: _selectedAction, // Uncomment if you want to display the selected item
+                    icon: const Icon(Icons.arrow_drop_down, color: Colors.black), // Dropdown arrow color
+                    iconSize: 24,
+                    isExpanded: false, // Set to true if you want the dropdown to expand to container width
+                    dropdownColor: Theme.of(context).primaryColorLight, // Background color of dropdown menu
+                    style: const TextStyle(color: Colors.black, fontSize: 16), // Text style for items
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        // setState(() {
+                        //   _selectedAction = newValue; // Update the selected action
+                        // });
+                        // TODO: Implement navigation or action based on selected option
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('$newValue selected')),
+                        );
+                        // Example:
+                        // if (newValue == 'Edit Password') {
+                        //   // Navigate to edit password page
+                        // } else if (newValue == 'Edit Username') {
+                        //   // Navigate to edit username page
+                        // } else if (newValue == 'Edit Email') {
+                        //   // Navigate to edit email page
+                        // }
+                      }
+                    },
+                    items: _editOptions.map<DropdownMenuItem<String>>((String value) {
+                      IconData iconData;
+                      if (value == 'Edit Password') {
+                        iconData = Icons.lock_open_outlined;
+                      } else if (value == 'Edit Username') {
+                        iconData = Icons.person_outline;
+                      } else { // Edit Email
+                        iconData = Icons.email_outlined;
+                      }
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Row(
+                          children: <Widget>[
+                            Icon(iconData, color: Colors.black54, size: 20), // Icon for the item
+                            const SizedBox(width: 8),
+                            Text(value),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
               ),
             ),
           ],
