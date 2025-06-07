@@ -14,11 +14,9 @@ class UserManagementPage extends StatelessWidget {
 
   // Sample data for the user management table
   final List<Map<String, String>> _userData = const [
-    {'id': '1', 'username': 'admin_user', 'email': 'admin@example.com', 'password': '••••••••', 'role': 'Admin'},
-    {'id': '2', 'username': 'john_operator', 'email': 'john.op@example.com', 'password': '••••••••', 'role': 'Operator'},
-    {'id': '3', 'username': 'jane_warehouse', 'email': 'jane.wh@example.com', 'password': '••••••••', 'role': 'Warehouse'},
-    {'id': '4', 'username': 'mike_op', 'email': 'mike.operator@example.com', 'password': '••••••••', 'role': 'Operator'},
-    {'id': '5', 'username': 'sara_admin', 'email': 'sara.admin@example.com', 'password': '••••••••', 'role': 'Admin'},
+    {'id': '1', 'username': 'admin_user', 'email': 'admin@example.com', 'password': 'password', 'role': 'Admin'},
+    {'id': '2', 'username': 'operator_user', 'email': 'operator@example.com', 'password': 'password', 'role': 'Operator'},
+    {'id': '3', 'username': 'warehouse_user', 'email': 'warehouse@example.com', 'password': 'password', 'role': 'Warehouse'},
   ];
 
   @override
