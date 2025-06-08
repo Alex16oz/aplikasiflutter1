@@ -1,5 +1,6 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 // Import all page files for route definitions
 import 'pages/login_page.dart'; // <-- IMPORT NEW LOGIN PAGE
@@ -16,8 +17,14 @@ import 'pages/attendance_reports_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/about_page.dart';
 
-void main() {
-  runApp(const MyApp());
+
+
+Future<void> main() async {
+  await Supabase.initialize(
+    url: 'https://sgnavqdkkglhesglhrdi.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNnbmF2cWRra2dsaGVzZ2xocmRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0ODcyMzEsImV4cCI6MjA2NDA2MzIzMX0.nRQXlWwf-9CRjQVsff45aShM1_-WAqY1DZ0ND8r_i04',
+  );
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
