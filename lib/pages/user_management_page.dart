@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/app_drawer.dart';
+import 'login_page.dart'; // Needed for navigation
 
 class UserManagementPage extends StatefulWidget {
   const UserManagementPage({super.key});
@@ -13,73 +14,81 @@ class UserManagementPage extends StatefulWidget {
 }
 
 class _UserManagementPageState extends State<UserManagementPage> {
-  // State variables for data and loading
   bool _isLoading = true;
-  List<Map<String, dynamic>> _users = [];
+  List<Map<String, dynamic>> _profiles = [];
   int _adminCount = 0;
   int _operatorCount = 0;
   int _warehouseCount = 0;
+  String? _currentUserRole;
 
-  // Supabase client instance
   final _supabase = Supabase.instance.client;
 
   @override
-  void initState() {
-    super.initState();
-    _fetchData(); // Fetch data when the page loads
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map<String, dynamic>) {
+      // Get the role of the person viewing the page
+      _currentUserRole = args['role'];
+    }
+    _fetchData();
   }
 
-  // Fetch all necessary data from Supabase
+
   Future<void> _fetchData() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() { _isLoading = true; });
 
     try {
-      // Fetch user list
-      final usersResponse = await _supabase
-          .from('users')
-          .select('id, username, email, role')
-          .order('id', ascending: true);
+      // The new RLS policy will automatically return all profiles if the
+      // logged-in user is an admin, or just their own if they are not.
+      final profilesResponse = await _supabase
+          .from('profiles')
+          .select('id, username, role')
+          .order('username', ascending: true);
 
-      // Fetch role counts using the RPC function
-      final countsResponse = await _supabase.rpc('get_user_role_counts');
+      _profiles = List<Map<String, dynamic>>.from(profilesResponse);
 
-      setState(() {
-        _users = List<Map<String, dynamic>>.from(usersResponse);
-        _adminCount = countsResponse['admin_count'] as int;
-        _operatorCount = countsResponse['operator_count'] as int;
-        _warehouseCount = countsResponse['warehouse_count'] as int;
-        _isLoading = false;
-      });
+      // Recalculate counts based on the fetched data
+      _adminCount = _profiles.where((p) => p['role'] == 'Admin').length;
+      _operatorCount = _profiles.where((p) => p['role'] == 'Operator').length;
+      _warehouseCount = _profiles.where((p) => p['role'] == 'Warehouse').length;
+
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error fetching data: ${error.toString()}'),
+            content: Text('Error fetching data: $error'),
             backgroundColor: Colors.red,
           ),
         );
       }
-      setState(() {
-        _isLoading = false;
-      });
+    } finally {
+      if (mounted) { setState(() { _isLoading = false; }); }
     }
   }
 
-  // Show a dialog to add or edit a user
-  Future<void> _showUserDialog({Map<String, dynamic>? user}) async {
+  // Dialog for adding or editing a user's profile
+  Future<void> _showUserDialog({Map<String, dynamic>? profile}) async {
+    // Other users should not be able to edit profiles.
+    if (_currentUserRole != 'Admin') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You do not have permission to edit users.')),
+      );
+      return;
+    }
+
     final formKey = GlobalKey<FormState>();
-    final usernameController = TextEditingController(text: user?['username']);
-    final emailController = TextEditingController(text: user?['email']);
-    String selectedRole = user?['role'] ?? 'Operator';
-    final bool isEditing = user != null;
+    final usernameController = TextEditingController(text: profile?['username']);
+    final emailController = TextEditingController(); // Only for adding new user
+    final passwordController = TextEditingController(); // Only for adding new user
+    String selectedRole = profile?['role'] ?? 'Operator';
+    final bool isEditing = profile != null;
 
     await showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text(isEditing ? 'Edit User' : 'Add User'),
+          title: Text(isEditing ? 'Edit User Profile' : 'Add New User'),
           content: Form(
             key: formKey,
             child: SingleChildScrollView(
@@ -89,24 +98,26 @@ class _UserManagementPageState extends State<UserManagementPage> {
                   TextFormField(
                     controller: usernameController,
                     decoration: const InputDecoration(labelText: 'Username'),
-                    validator: (value) =>
-                    value!.isEmpty ? 'Username cannot be empty' : null,
+                    validator: (v) => v!.isEmpty ? 'Username cannot be empty' : null,
                   ),
-                  TextFormField(
-                    controller: emailController,
-                    decoration: const InputDecoration(labelText: 'Email'),
-                    validator: (value) =>
-                    !value!.contains('@') ? 'Enter a valid email' : null,
-                  ),
-                  // **CHANGE**: Password input is removed.
+                  if (!isEditing) ...[
+                    TextFormField(
+                      controller: emailController,
+                      decoration: const InputDecoration(labelText: 'Email'),
+                      validator: (v) => !v!.contains('@') ? 'Enter a valid email' : null,
+                    ),
+                    TextFormField(
+                      controller: passwordController,
+                      decoration: const InputDecoration(labelText: 'Password'),
+                      obscureText: true,
+                      validator: (v) => v!.length < 6 ? 'Min 6 characters' : null,
+                    ),
+                  ],
                   DropdownButtonFormField<String>(
                     value: selectedRole,
                     decoration: const InputDecoration(labelText: 'Role'),
                     items: ['Admin', 'Operator', 'Warehouse']
-                        .map((role) => DropdownMenuItem(
-                      value: role,
-                      child: Text(role),
-                    ))
+                        .map((role) => DropdownMenuItem(value: role, child: Text(role)))
                         .toList(),
                     onChanged: (value) => selectedRole = value!,
                   ),
@@ -124,29 +135,32 @@ class _UserManagementPageState extends State<UserManagementPage> {
                 if (formKey.currentState!.validate()) {
                   try {
                     if (isEditing) {
-                      // Update existing user
-                      await _supabase.from('users').update({
+                      await _supabase.from('profiles').update({
                         'username': usernameController.text,
-                        'email': emailController.text,
                         'role': selectedRole,
-                      }).eq('id', user['id']);
+                      }).eq('id', profile['id']);
                     } else {
-                      // **CHANGE**: Add new user with a default password.
-                      // IMPORTANT: In a real app, this should be a securely hashed password.
-                      // Using a default plaintext password is a major security risk.
-                      await _supabase.from('users').insert({
-                        'username': usernameController.text,
-                        'email': emailController.text,
-                        'password_hash': 'password', // Default password
-                        'role': selectedRole,
-                      });
+                      await _supabase.auth.signUp(
+                        email: emailController.text,
+                        password: passwordController.text,
+                        data: {'username': usernameController.text, 'role': selectedRole},
+                      );
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('User created. You have been logged out and the new user is now logged in.'),
+                          backgroundColor: Colors.orange,
+                          duration: Duration(seconds: 5),
+                        ));
+                        Navigator.of(context).pushNamedAndRemoveUntil(LoginPage.routeName, (route) => false);
+                        return;
+                      }
                     }
                     if (mounted) Navigator.of(context).pop();
-                    _fetchData(); // Refresh data
+                    _fetchData();
                   } catch (error) {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text('Failed to save user: ${error.toString()}'),
+                        content: Text('Failed to save profile: $error'),
                         backgroundColor: Colors.red,
                       ));
                     }
@@ -161,43 +175,39 @@ class _UserManagementPageState extends State<UserManagementPage> {
     );
   }
 
-  // **NEW**: Reset a user's password to the default
-  Future<void> _resetPassword(int id) async {
+  // Delete a user's profile after confirmation
+  Future<void> _deleteProfile(String id) async {
+    if (_currentUserRole != 'Admin') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You do not have permission to delete users.')),
+      );
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Confirm Password Reset'),
-          content: const Text('Are you sure you want to reset this user\'s password to the default?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: TextButton.styleFrom(foregroundColor: Colors.orange),
-              child: const Text('Reset'),
-            ),
-          ],
-        );
-      },
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Deletion'),
+        content: const Text('Are you sure you want to delete this profile? The authenticated user will remain.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
     );
 
     if (confirmed == true) {
       try {
-        // IMPORTANT: Again, using a plaintext password is not secure.
-        await _supabase.from('users').update({'password_hash': 'password'}).eq('id', id);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Password has been reset successfully.'),
-            backgroundColor: Colors.green,
-          ));
-        }
+        await _supabase.from('profiles').delete().eq('id', id);
+        _fetchData();
       } catch (error) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Failed to reset password: ${error.toString()}'),
+            content: Text('Failed to delete profile: $error'),
             backgroundColor: Colors.red,
           ));
         }
@@ -205,55 +215,22 @@ class _UserManagementPageState extends State<UserManagementPage> {
     }
   }
 
-  // Delete a user after confirmation
-  Future<void> _deleteUser(int id) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Confirm Deletion'),
-          content: const Text('Are you sure you want to delete this user?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed == true) {
-      try {
-        await _supabase.from('users').delete().eq('id', id);
-        _fetchData(); // Refresh data
-      } catch (error) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Failed to delete user: ${error.toString()}'),
-            backgroundColor: Colors.red,
-          ));
-        }
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
+    // Only show add/edit/delete buttons if the viewer is an Admin
+    final bool isAdmin = _currentUserRole == 'Admin';
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('User Management'),
         actions: <Widget>[
-          IconButton(
-            icon: const Icon(Icons.person_add),
-            tooltip: 'Add User',
-            onPressed: () => _showUserDialog(),
-          ),
+          if (isAdmin)
+            IconButton(
+              icon: const Icon(Icons.person_add),
+              tooltip: 'Add User',
+              onPressed: () => _showUserDialog(),
+            ),
         ],
       ),
       drawer: const AppDrawer(),
@@ -262,106 +239,65 @@ class _UserManagementPageState extends State<UserManagementPage> {
           : RefreshIndicator(
         onRefresh: _fetchData,
         child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(12.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
+              // User role summary cards
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
-                  Expanded(
-                    child: _buildUserCard(
-                      context: context,
-                      count: _adminCount,
-                      name: 'Admin',
-                      icon: Icons.admin_panel_settings,
-                      color: Colors.red.shade400,
-                    ),
-                  ),
+                  Expanded(child: _buildUserCard(count: _adminCount, name: 'Admin', icon: Icons.admin_panel_settings, color: Colors.red.shade400)),
                   const SizedBox(width: 12.0),
-                  Expanded(
-                    child: _buildUserCard(
-                      context: context,
-                      count: _operatorCount,
-                      name: 'Operator',
-                      icon: Icons.engineering,
-                      color: Colors.blue.shade400,
-                    ),
-                  ),
+                  Expanded(child: _buildUserCard(count: _operatorCount, name: 'Operator', icon: Icons.engineering, color: Colors.blue.shade400)),
                   const SizedBox(width: 12.0),
-                  Expanded(
-                    child: _buildUserCard(
-                      context: context,
-                      count: _warehouseCount,
-                      name: 'Warehouse',
-                      icon: Icons.store,
-                      color: Colors.green.shade400,
-                    ),
-                  ),
+                  Expanded(child: _buildUserCard(count: _warehouseCount, name: 'Warehouse', icon: Icons.store, color: Colors.green.shade400)),
                 ],
               ),
               const SizedBox(height: 24.0),
-              const Text(
-                'User Management Table',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
+              const Text('User Profiles', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8.0),
+              // User profiles data table
               SizedBox(
                 width: double.infinity,
                 child: DataTable(
-                  columnSpacing: 10.0,
-                  headingRowColor: WidgetStateColor.resolveWith(
-                          (states) => Colors.blueGrey.shade100),
-                  border: TableBorder.all(
-                    color: Colors.grey.shade400,
-                    width: 1,
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  columns: const <DataColumn>[
-                    DataColumn(label: Text('ID', style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(label: Text('Username', style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(label: Text('Role', style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(label: Text('Action', style: TextStyle(fontWeight: FontWeight.bold))),
+                  columnSpacing: 20.0,
+                  headingRowColor: WidgetStateColor.resolveWith((s) => Colors.blueGrey.shade100),
+                  border: TableBorder.all(color: Colors.grey.shade400, width: 1, borderRadius: BorderRadius.circular(8.0)),
+                  columns: <DataColumn>[
+                    const DataColumn(label: Text('Username', style: TextStyle(fontWeight: FontWeight.bold))),
+                    const DataColumn(label: Text('Role', style: TextStyle(fontWeight: FontWeight.bold))),
+                    if(isAdmin)
+                      const DataColumn(label: Text('Action', style: TextStyle(fontWeight: FontWeight.bold))),
                   ],
-                  rows: _users.map((user) {
+                  rows: _profiles.map((profile) {
                     return DataRow(
                       cells: <DataCell>[
-                        DataCell(Text(user['id'].toString())),
-                        DataCell(Text(user['username'])),
-                        DataCell(Text(user['email'])),
-                        DataCell(Text(user['role'])),
-                        DataCell(
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: Icon(Icons.edit, size: 20, color: Colors.blue.shade700),
-                                tooltip: 'Edit',
-                                onPressed: () => _showUserDialog(user: user),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                              ),
-                              const SizedBox(width: 4),
-                              // **NEW**: Reset password button
-                              IconButton(
-                                icon: Icon(Icons.lock_reset, size: 20, color: Colors.orange.shade700),
-                                tooltip: 'Reset Password',
-                                onPressed: () => _resetPassword(user['id']),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                              ),
-                              const SizedBox(width: 4),
-                              IconButton(
-                                icon: Icon(Icons.delete, size: 20, color: Colors.red.shade700),
-                                tooltip: 'Delete',
-                                onPressed: () => _deleteUser(user['id']),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                              ),
-                            ],
+                        DataCell(Text(profile['username'] ?? 'N/A')),
+                        DataCell(Text(profile['role'] ?? 'N/A')),
+                        if(isAdmin)
+                          DataCell(
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: Icon(Icons.edit, size: 20, color: Colors.blue.shade700),
+                                  tooltip: 'Edit',
+                                  onPressed: () => _showUserDialog(profile: profile),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  icon: Icon(Icons.delete, size: 20, color: Colors.red.shade700),
+                                  tooltip: 'Delete',
+                                  onPressed: () => _deleteProfile(profile['id']),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
                       ],
                     );
                   }).toList(),
@@ -374,56 +310,25 @@ class _UserManagementPageState extends State<UserManagementPage> {
     );
   }
 
-  // Helper widget to build a user card
-  Widget _buildUserCard({
-    required BuildContext context,
-    required int count,
-    required String name,
-    required IconData icon,
-    required Color color,
-  }) {
+  Widget _buildUserCard({required int count, required String name, required IconData icon, required Color color}) {
     return Card(
       elevation: 3.0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10.0),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
       child: Container(
         padding: const EdgeInsets.all(12.0),
         height: 100,
-        child: Stack(
-          children: <Widget>[
-            Positioned(
-              top: 0,
-              left: 0,
-              child: Text(
-                name,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-              ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(name, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
+                Icon(icon, size: 28.0, color: color.withAlpha(150)),
+              ],
             ),
-            Positioned(
-              top: 4,
-              right: 0,
-              child: Icon(
-                icon,
-                size: 32.0,
-                color: color.withAlpha((255 * 0.6).round()),
-              ),
-            ),
-            Positioned(
-              bottom: 0,
-              left: 0,
-              child: Text(
-                count.toString(),
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+            Text(count.toString(), style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
