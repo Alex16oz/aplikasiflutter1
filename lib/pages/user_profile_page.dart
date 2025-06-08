@@ -1,6 +1,6 @@
 // lib/pages/user_profile_page.dart
 import 'package:flutter/material.dart';
-import '../widgets/app_drawer.dart'; // Import the AppDrawer
+import '../widgets/app_drawer.dart';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
@@ -18,13 +18,10 @@ class _UserProfilePageState extends State<UserProfilePage> {
     'Edit Email'
   ];
 
-  // State variables for user profile data displayed on the card
-  String _userId = 'user123'; // Assuming UserID is not editable for now
-  String _username = 'john_doe';
-  String _email = 'john.doe@example.com';
-  // Password is not displayed directly, so no state variable for it here
+  String _userId = '...';
+  String _username = '...';
+  String _email = '...';
 
-  // Controllers for forms
   final _passwordFormKey = GlobalKey<FormState>();
   final TextEditingController _currentPasswordController = TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
@@ -36,11 +33,22 @@ class _UserProfilePageState extends State<UserProfilePage> {
   final _emailFormKey = GlobalKey<FormState>();
   final TextEditingController _newEmailController = TextEditingController();
 
-  // State variables for password visibility
   bool _isCurrentPasswordVisible = false;
   bool _isNewPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final user = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (user != null) {
+      setState(() {
+        _userId = user['id'].toString();
+        _username = user['username'];
+        _email = user['email'];
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -53,7 +61,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 
   Future<void> _showEditPasswordDialog() async {
-    // Reset visibility states when dialog is opened
     setState(() {
       _isCurrentPasswordVisible = false;
       _isNewPasswordVisible = false;
@@ -61,9 +68,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
     });
     return showDialog<void>(
       context: context,
-      barrierDismissible: false, // User must tap button!
+      barrierDismissible: false,
       builder: (BuildContext dialogContext) {
-        // Use StatefulBuilder to manage state within the dialog (for password visibility)
         return StatefulBuilder(
             builder: (context, setDialogState) {
               return AlertDialog(
@@ -93,8 +99,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                             if (value == null || value.isEmpty) {
                               return 'Please enter current password';
                             }
-                            // TODO: Add validation against actual current password
-                            if (value != "password") { // Example current password
+                            if (value != "password") {
                               return 'Incorrect current password';
                             }
                             return null;
@@ -170,7 +175,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     child: const Text('Save'),
                     onPressed: () {
                       if (_passwordFormKey.currentState!.validate()) {
-                        // TODO: Implement password change logic with backend
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Password successfully changed (simulated)')),
                         );
@@ -194,7 +198,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 
   Future<void> _showEditUsernameDialog() async {
-    _newUsernameController.text = _username; // Pre-fill with current username
+    _newUsernameController.text = _username;
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -216,7 +220,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       if (value.length < 3) {
                         return 'Username must be at least 3 characters';
                       }
-                      // TODO: Add further username validation (e.g., availability)
                       return null;
                     },
                   ),
@@ -236,7 +239,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
               child: const Text('Save'),
               onPressed: () {
                 if (_usernameFormKey.currentState!.validate()) {
-                  // Implement username change logic
                   setState(() {
                     _username = _newUsernameController.text;
                   });
@@ -244,7 +246,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     SnackBar(content: Text('Username changed to: $_username')),
                   );
                   Navigator.of(dialogContext).pop();
-                  // _newUsernameController.clear(); // No need to clear if pre-filled and successfully saved
                 }
               },
             ),
@@ -255,7 +256,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 
   Future<void> _showEditEmailDialog() async {
-    _newEmailController.text = _email; // Pre-fill with current email
+    _newEmailController.text = _email;
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -278,7 +279,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
                         return 'Please enter a valid email address';
                       }
-                      // TODO: Add further email validation (e.g., availability)
                       return null;
                     },
                   ),
@@ -298,7 +298,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
               child: const Text('Save'),
               onPressed: () {
                 if (_emailFormKey.currentState!.validate()) {
-                  // Implement email change logic
                   setState(() {
                     _email = _newEmailController.text;
                   });
@@ -306,7 +305,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     SnackBar(content: Text('Email changed to: $_email')),
                   );
                   Navigator.of(dialogContext).pop();
-                  // _newEmailController.clear(); // No need to clear if pre-filled and successfully saved
                 }
               },
             ),
@@ -315,7 +313,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
       },
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -352,7 +349,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                           const SizedBox(height: 8.0),
                           _buildUserInfoRow(icon: Icons.person, label: 'Username:', value: _username),
                           const SizedBox(height: 8.0),
-                          _buildUserInfoRow(icon: Icons.lock, label: 'Password:', value: '********'), // Password display remains masked
+                          _buildUserInfoRow(icon: Icons.lock, label: 'Password:', value: '********'),
                           const SizedBox(height: 8.0),
                           _buildUserInfoRow(icon: Icons.email, label: 'Email:', value: _email),
                         ],
@@ -383,7 +380,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     style: const TextStyle(color: Colors.black, fontSize: 16),
                     onChanged: (String? newValue) {
                       if (newValue != null) {
-                        // Clear password controllers specifically before opening password dialog
                         if (newValue == 'Edit Password') {
                           _clearPasswordControllers();
                           _showEditPasswordDialog();
@@ -400,7 +396,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         iconData = Icons.lock_open_outlined;
                       } else if (value == 'Edit Username') {
                         iconData = Icons.person_outline;
-                      } else { // Edit Email
+                      } else {
                         iconData = Icons.email_outlined;
                       }
                       return DropdownMenuItem<String>(

@@ -1,5 +1,6 @@
 // lib/pages/login_page.dart
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // Import Supabase
 import 'dashboard_page.dart'; // To navigate to the dashboard after login
 
 class LoginPage extends StatefulWidget {
@@ -21,21 +22,43 @@ class _LoginPageState extends State<LoginPage> {
   final FocusNode _emailFocusNode = FocusNode();
   final FocusNode _passwordFocusNode = FocusNode();
 
-  void _login() {
+  // Supabase client
+  final _supabase = Supabase.instance.client;
+
+  Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
       });
 
-      // Simulate a network request
-      Future.delayed(const Duration(seconds: 2), () {
-        setState(() {
-          _isLoading = false;
-        });
-        // TODO: Implement actual authentication logic here
-        // For now, we'll just navigate to the dashboard
-        Navigator.pushReplacementNamed(context, DashboardPage.routeName);
-      });
+      try {
+        final response = await _supabase
+            .from('users')
+            .select()
+            .eq('email', _emailController.text)
+            .eq('password_hash', _passwordController.text) // NOTE: In a real app, hash the password before sending
+            .single();
+
+        if (mounted) {
+          // Navigate to the dashboard, passing the user data
+          Navigator.pushReplacementNamed(context, DashboardPage.routeName, arguments: response);
+        }
+      } catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Login failed. Please check your credentials.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
     }
   }
 
@@ -51,9 +74,6 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar: AppBar(
-      // title: const Text('Login'),
-      // ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -63,7 +83,6 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                // App Logo or Title (Optional)
                 Icon(
                   Icons.lock_outline,
                   size: 80,
@@ -86,11 +105,9 @@ class _LoginPageState extends State<LoginPage> {
                   style: TextStyle(fontSize: 16, color: Colors.grey),
                 ),
                 const SizedBox(height: 40),
-
-                // Email TextFormField
                 TextFormField(
                   controller: _emailController,
-                  focusNode: _emailFocusNode, // Assign focus node
+                  focusNode: _emailFocusNode,
                   decoration: InputDecoration(
                     labelText: 'Email',
                     hintText: 'Enter your email',
@@ -109,18 +126,15 @@ class _LoginPageState extends State<LoginPage> {
                     }
                     return null;
                   },
-                  // Move to password field on "Enter"
                   onFieldSubmitted: (_) {
                     FocusScope.of(context).requestFocus(_passwordFocusNode);
                   },
-                  textInputAction: TextInputAction.next, // Show "next" button on keyboard
+                  textInputAction: TextInputAction.next,
                 ),
                 const SizedBox(height: 20.0),
-
-                // Password TextFormField
                 TextFormField(
                   controller: _passwordController,
-                  focusNode: _passwordFocusNode, // Assign focus node
+                  focusNode: _passwordFocusNode,
                   decoration: InputDecoration(
                     labelText: 'Password',
                     hintText: 'Enter your password',
@@ -128,27 +142,20 @@ class _LoginPageState extends State<LoginPage> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8.0),
                     ),
-                    // Add suffix icon for password visibility toggle if desired
                   ),
                   obscureText: true,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Please enter your password';
                     }
-                    if (value.length < 6) {
-                      return 'Password must be at least 6 characters long';
-                    }
                     return null;
                   },
-                  // Call _login on "Enter"
                   onFieldSubmitted: (_) {
                     _login();
                   },
-                  textInputAction: TextInputAction.done, // Show "done" or "go" button on keyboard
+                  textInputAction: TextInputAction.done,
                 ),
                 const SizedBox(height: 30.0),
-
-                // Login Button
                 _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : ElevatedButton(
@@ -166,13 +173,11 @@ class _LoginPageState extends State<LoginPage> {
                   child: const Text('Login'),
                 ),
                 const SizedBox(height: 20.0),
-                // Optional: Add "Forgot Password?" or "Sign Up" links
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     TextButton(
                       onPressed: () {
-                        // TODO: Navigate to Sign Up page
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                               content: Text('Sign Up functionality not implemented yet.')),
