@@ -16,10 +16,12 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _usernameController = TextEditingController(); // For sign up
+  final TextEditingController _usernameController =
+  TextEditingController(); // For sign up
 
   bool _isLoading = false;
   bool _isLogin = true; // To toggle between Login and Sign Up views
+  bool _passwordVisible = false; // To toggle password visibility
 
   final _supabase = Supabase.instance.client;
 
@@ -65,7 +67,8 @@ class _LoginPageState extends State<LoginPage> {
         // **IMPROVEMENT**: Check if the profile exists before navigating.
         if (profileResponse == null) {
           throw const PostgrestException(
-            message: 'Login successful, but user profile not found. Please contact an administrator.',
+            message:
+            'Login successful, but user profile not found. Please contact an administrator.',
           );
         }
 
@@ -75,11 +78,11 @@ class _LoginPageState extends State<LoginPage> {
           DashboardPage.routeName,
           arguments: {
             ...profileResponse, // Contains id, username, role
-            'email': _supabase.auth.currentUser!.email, // Add email from auth user
+            'email':
+            _supabase.auth.currentUser!.email, // Add email from auth user
           },
         );
       }
-
     } on AuthException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -98,8 +101,7 @@ class _LoginPageState extends State<LoginPage> {
           ),
         );
       }
-    }
-    catch (error) {
+    } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -121,7 +123,8 @@ class _LoginPageState extends State<LoginPage> {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your email to reset password.')),
+        const SnackBar(
+            content: Text('Please enter your email to reset password.')),
       );
       return;
     }
@@ -129,7 +132,8 @@ class _LoginPageState extends State<LoginPage> {
       await _supabase.auth.resetPasswordForEmail(email);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Password reset link sent! Check your email.')),
+          const SnackBar(
+              content: Text('Password reset link sent! Check your email.')),
         );
       }
     } on AuthException catch (error) {
@@ -219,7 +223,9 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) {
-                    if (value == null || value.isEmpty || !value.contains('@')) {
+                    if (value == null ||
+                        value.isEmpty ||
+                        !value.contains('@')) {
                       return 'Please enter a valid email';
                     }
                     return null;
@@ -236,8 +242,20 @@ class _LoginPageState extends State<LoginPage> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8.0),
                     ),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _passwordVisible
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _passwordVisible = !_passwordVisible;
+                        });
+                      },
+                    ),
                   ),
-                  obscureText: true,
+                  obscureText: !_passwordVisible,
                   validator: (value) {
                     if (value == null || value.isEmpty || value.length < 6) {
                       return 'Password must be at least 6 characters long';
@@ -266,7 +284,8 @@ class _LoginPageState extends State<LoginPage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).primaryColor,
                     padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    textStyle: const TextStyle(fontSize: 18, color: Colors.black),
+                    textStyle:
+                    const TextStyle(fontSize: 18, color: Colors.black),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8.0),
                     ),
