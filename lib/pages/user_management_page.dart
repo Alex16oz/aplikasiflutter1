@@ -72,7 +72,6 @@ class _UserManagementPageState extends State<UserManagementPage> {
     final formKey = GlobalKey<FormState>();
     final usernameController = TextEditingController(text: user?['username']);
     final emailController = TextEditingController(text: user?['email']);
-    final passwordController = TextEditingController();
     String selectedRole = user?['role'] ?? 'Operator';
     final bool isEditing = user != null;
 
@@ -99,15 +98,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                     validator: (value) =>
                     !value!.contains('@') ? 'Enter a valid email' : null,
                   ),
-                  if (!isEditing) // Only show password field for new users
-                    TextFormField(
-                      controller: passwordController,
-                      decoration: const InputDecoration(labelText: 'Password'),
-                      obscureText: true,
-                      validator: (value) => value!.length < 6
-                          ? 'Password must be at least 6 characters'
-                          : null,
-                    ),
+                  // **CHANGE**: Password input is removed.
                   DropdownButtonFormField<String>(
                     value: selectedRole,
                     decoration: const InputDecoration(labelText: 'Role'),
@@ -140,13 +131,13 @@ class _UserManagementPageState extends State<UserManagementPage> {
                         'role': selectedRole,
                       }).eq('id', user['id']);
                     } else {
-                      // Add new user
-                      // IMPORTANT: In a real app, use Supabase Auth `signUp` for secure password handling.
-
+                      // **CHANGE**: Add new user with a default password.
+                      // IMPORTANT: In a real app, this should be a securely hashed password.
+                      // Using a default plaintext password is a major security risk.
                       await _supabase.from('users').insert({
                         'username': usernameController.text,
                         'email': emailController.text,
-                        'password_hash': passwordController.text, // !! NEVER do this in production
+                        'password_hash': 'password', // Default password
                         'role': selectedRole,
                       });
                     }
@@ -168,6 +159,50 @@ class _UserManagementPageState extends State<UserManagementPage> {
         );
       },
     );
+  }
+
+  // **NEW**: Reset a user's password to the default
+  Future<void> _resetPassword(int id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Confirm Password Reset'),
+          content: const Text('Are you sure you want to reset this user\'s password to the default?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(foregroundColor: Colors.orange),
+              child: const Text('Reset'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      try {
+        // IMPORTANT: Again, using a plaintext password is not secure.
+        await _supabase.from('users').update({'password_hash': 'password'}).eq('id', id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Password has been reset successfully.'),
+            backgroundColor: Colors.green,
+          ));
+        }
+      } catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Failed to reset password: ${error.toString()}'),
+            backgroundColor: Colors.red,
+          ));
+        }
+      }
+    }
   }
 
   // Delete a user after confirmation
@@ -304,6 +339,15 @@ class _UserManagementPageState extends State<UserManagementPage> {
                                 icon: Icon(Icons.edit, size: 20, color: Colors.blue.shade700),
                                 tooltip: 'Edit',
                                 onPressed: () => _showUserDialog(user: user),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                              const SizedBox(width: 4),
+                              // **NEW**: Reset password button
+                              IconButton(
+                                icon: Icon(Icons.lock_reset, size: 20, color: Colors.orange.shade700),
+                                tooltip: 'Reset Password',
+                                onPressed: () => _resetPassword(user['id']),
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
                               ),
