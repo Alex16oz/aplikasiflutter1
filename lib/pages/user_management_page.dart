@@ -32,29 +32,67 @@ class _UserManagementPageState extends State<UserManagementPage> {
     _fetchData();
   }
 
+  String _formatLastLogin(String? dateString) {
+    if (dateString == null) {
+      return 'Never';
+    }
+    try {
+      final lastLogin = DateTime.parse(dateString);
+      final now = DateTime.now();
+
+      // Normalisasi ke tengah malam untuk membandingkan hari dengan mudah
+      final lastLoginDate = DateTime(lastLogin.year, lastLogin.month, lastLogin.day);
+      final nowDate = DateTime(now.year, now.month, now.day);
+
+      final differenceInDays = nowDate.difference(lastLoginDate).inDays;
+
+      if (differenceInDays == 0) {
+        return 'Today';
+      } else if (differenceInDays == 1) {
+        return 'Yesterday';
+      } else {
+        return '$differenceInDays days ago';
+      }
+    } catch (e) {
+      return 'N/A';
+    }
+  }
+
   Future<void> _fetchData() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
     });
 
     try {
-      final profilesResponse = await _supabase
-          .from('profiles')
-          .select('id, username, role')
-          .order('username', ascending: true);
+      // Panggil edge function untuk mendapatkan data pengguna secara aman
+      final response = await _supabase.functions.invoke('get-all-users');
 
-      _profiles = List<Map<String, dynamic>>.from(profilesResponse);
+      if (response.status != 200) {
+        final errorMessage = response.data is Map ? response.data['error'] : 'Unknown error';
+        throw 'Failed to fetch users: $errorMessage';
+      }
 
+      final List<dynamic> data = response.data;
+      if (!mounted) return;
+
+      _profiles = data.map((item) => item as Map<String, dynamic>).toList();
+
+      // Urutkan data berdasarkan nama pengguna secara alfabetis
+      _profiles.sort((a, b) => (a['username'] as String).compareTo(b['username'] as String));
+
+      // Hitung ulang jumlah peran
       _adminCount = _profiles.where((p) => p['role'] == 'Admin').length;
       _operatorCount = _profiles.where((p) => p['role'] == 'Operator').length;
       _warehouseCount =
           _profiles.where((p) => p['role'] == 'Warehouse').length;
+
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error fetching data: $error'),
-            backgroundColor: Colors.red,
+            content: Text('$error'),
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -139,13 +177,13 @@ class _UserManagementPageState extends State<UserManagementPage> {
                 if (formKey.currentState!.validate()) {
                   try {
                     if (isEditing) {
-                      // --- EDITING LOGIC ---
+                      // --- LOGIKA EDIT ---
                       await _supabase.from('profiles').update({
                         'username': usernameController.text.trim(),
                         'role': selectedRole,
                       }).eq('id', profile['id']);
                     } else {
-                      // --- ADD USER LOGIC (CALLING EDGE FUNCTION) ---
+                      // --- LOGIKA TAMBAH PENGGUNA (MEMANGGIL EDGE FUNCTION) ---
                       await _supabase.functions.invoke('create-user',
                           body: {
                             'email': emailController.text.trim(),
@@ -184,6 +222,18 @@ class _UserManagementPageState extends State<UserManagementPage> {
   }
 
   Future<void> _deleteProfile(String id) async {
+    final currentUser = _supabase.auth.currentUser;
+    // Mencegah admin menghapus akunnya sendiri dari daftar
+    if (currentUser != null && currentUser.id == id) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You cannot delete your own account.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     if (_currentUserRole != 'Admin') {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('You do not have permission to delete users.')),
@@ -195,7 +245,8 @@ class _UserManagementPageState extends State<UserManagementPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Deletion'),
-        content: const Text('Are you sure you want to delete this profile? This will not delete the authenticated user.'),
+        // Teks konfirmasi diubah untuk mencerminkan penghapusan permanen
+        content: const Text('Are you sure you want to permanently delete this user? This action cannot be undone.'),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
           TextButton(
@@ -209,25 +260,36 @@ class _UserManagementPageState extends State<UserManagementPage> {
 
     if (confirmed == true) {
       try {
-        await _supabase.from('profiles').delete().eq('id', id);
+        // Panggil edge function 'delete-user'
+        final response = await _supabase.functions.invoke(
+          'delete-user',
+          body: {'user_id': id},
+        );
+
+        if (response.status != 200) {
+          final errorMessage = response.data is Map ? response.data['error'] : 'Failed to delete user.';
+          throw Exception(errorMessage);
+        }
+
+        // Muat ulang daftar pengguna setelah berhasil dihapus
         _fetchData();
+
         if(mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Profile deleted successfully.'),
+            content: Text('User deleted successfully.'),
             backgroundColor: Colors.green,
           ));
         }
       } catch (error) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Failed to delete profile: $error'),
-            backgroundColor: Colors.red,
+            content: Text('Failed to delete user: $error'),
+            backgroundColor: Theme.of(context).colorScheme.error,
           ));
         }
       }
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -271,12 +333,14 @@ class _UserManagementPageState extends State<UserManagementPage> {
               SizedBox(
                 width: double.infinity,
                 child: DataTable(
-                  columnSpacing: 20.0,
+                  columnSpacing: 16.0,
                   headingRowColor: WidgetStateColor.resolveWith((s) => Colors.blueGrey.shade100),
                   border: TableBorder.all(color: Colors.grey.shade400, width: 1, borderRadius: BorderRadius.circular(8.0)),
                   columns: <DataColumn>[
                     const DataColumn(label: Text('Username', style: TextStyle(fontWeight: FontWeight.bold))),
+                    const DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.bold))),
                     const DataColumn(label: Text('Role', style: TextStyle(fontWeight: FontWeight.bold))),
+                    const DataColumn(label: Text('Last Login', style: TextStyle(fontWeight: FontWeight.bold))), // KOLOM BARU
                     if(isAdmin)
                       const DataColumn(label: Text('Action', style: TextStyle(fontWeight: FontWeight.bold))),
                   ],
@@ -284,7 +348,9 @@ class _UserManagementPageState extends State<UserManagementPage> {
                     return DataRow(
                       cells: <DataCell>[
                         DataCell(Text(profile['username'] ?? 'N/A')),
+                        DataCell(Text(profile['email'] ?? 'N/A')),
                         DataCell(Text(profile['role'] ?? 'N/A')),
+                        DataCell(Text(_formatLastLogin(profile['last_sign_in_at']))), // CELL BARU
                         if(isAdmin)
                           DataCell(
                             Row(
@@ -297,7 +363,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                                   padding: EdgeInsets.zero,
                                   constraints: const BoxConstraints(),
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 4),
                                 IconButton(
                                   icon: Icon(Icons.delete, size: 20, color: Colors.red.shade700),
                                   tooltip: 'Delete',
