@@ -27,7 +27,7 @@ final List<Map<String, dynamic>> seedUsers = [
     'email': 'warehouse.user@example.com',
     'password': 'password123',
     'username': 'WarehouseUser',
-    'role': 'Warehouse'
+    'role': 'Warehouse Staff'
   },
   // Add more users here...
 ];

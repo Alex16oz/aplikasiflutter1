@@ -85,7 +85,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
       _adminCount = _profiles.where((p) => p['role'] == 'Admin').length;
       _operatorCount = _profiles.where((p) => p['role'] == 'Operator').length;
       _warehouseCount =
-          _profiles.where((p) => p['role'] == 'Warehouse').length;
+          _profiles.where((p) => p['role'] == 'Warehouse Staff').length;
 
     } catch (error) {
       if (mounted) {
@@ -157,7 +157,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                   DropdownButtonFormField<String>(
                     value: selectedRole,
                     decoration: const InputDecoration(labelText: 'Role'),
-                    items: ['Admin', 'Operator', 'Warehouse']
+                    items: ['Admin', 'Operator', 'Warehouse Staff']
                         .map((role) =>
                         DropdownMenuItem(value: role, child: Text(role)))
                         .toList(),
@@ -324,7 +324,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                   const SizedBox(width: 12.0),
                   Expanded(child: _buildUserCard(count: _operatorCount, name: 'Operator', icon: Icons.engineering, color: Colors.blue.shade400)),
                   const SizedBox(width: 12.0),
-                  Expanded(child: _buildUserCard(count: _warehouseCount, name: 'Warehouse', icon: Icons.store, color: Colors.green.shade400)),
+                  Expanded(child: _buildUserCard(count: _warehouseCount, name: 'Warehouse Staff', icon: Icons.store, color: Colors.green.shade400)),
                 ],
               ),
               const SizedBox(height: 24.0),
