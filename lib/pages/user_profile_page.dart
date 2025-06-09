@@ -18,6 +18,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   String _userId = '...';
   String _username = '...';
   String _email = '...';
+  String _role = '...'; // Added to store the user's role
 
   // Form keys
   final _passwordFormKey = GlobalKey<FormState>();
@@ -44,6 +45,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
         _userId = args['id'] ?? '...';
         _username = args['username'] ?? '...';
         _email = args['email'] ?? '...';
+        _role = args['role'] ??
+            '...'; // Extract role from navigation arguments
       });
     }
   }
@@ -277,6 +280,28 @@ class _UserProfilePageState extends State<UserProfilePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('User Profile'),
+        actions: <Widget>[
+          PopupMenuButton<String>(
+            onSelected: (String newValue) {
+              if (newValue == 'Edit Username') {
+                _showEditUsernameDialog();
+              } else if (newValue == 'Edit Password') {
+                _showEditPasswordDialog();
+              } else if (newValue == 'Edit Email') {
+                _showEditEmailDialog();
+              }
+            },
+            itemBuilder: (BuildContext context) {
+              return editOptions.map((String choice) {
+                return PopupMenuItem<String>(
+                  value: choice,
+                  child: Text(choice),
+                );
+              }).toList();
+            },
+            icon: const Icon(Icons.edit),
+          ),
+        ],
       ),
       drawer: const AppDrawer(),
       body: Padding(
@@ -310,9 +335,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
                               value: _email),
                           const SizedBox(height: 8.0),
                           _buildUserInfoRow(
-                              icon: Icons.lock,
-                              label: 'Password:',
-                              value: '********'),
+                              icon: Icons.work_outline, // Changed icon
+                              label: 'Role:', // Changed label
+                              value: _role), // Changed value to display role
                         ],
                       ),
                     ),
@@ -321,33 +346,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
               ),
             ),
             const SizedBox(height: 16.0),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor,
-                  borderRadius: BorderRadius.circular(8.0),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    hint: const Text('Edit Profile', style: TextStyle(color: Colors.black)),
-                    icon: const Icon(Icons.edit, color: Colors.black),
-                    onChanged: (String? newValue) {
-                      if (newValue == 'Edit Username') _showEditUsernameDialog();
-                      if (newValue == 'Edit Password') _showEditPasswordDialog();
-                      if (newValue == 'Edit Email') _showEditEmailDialog();
-                    },
-                    items: editOptions.map<DropdownMenuItem<String>>((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-            ),
           ],
         ),
       ),
