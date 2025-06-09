@@ -8,14 +8,14 @@ class WarehousePage extends StatelessWidget {
   static const String routeName = '/warehouse';
 
   // Sample data for the spareparts table
-  // Based on `spareparts` table schema: id_sparepart, sparepart_name, quantity, category_machine
+  // Updated with new columns: part_number, supplier, unit_price, location, last_updated, and compatible_machine
   final List<Map<String, dynamic>> _sparepartsData = const [
-    {'id_sparepart': 'SP001', 'sparepart_name': 'Oil Filter', 'quantity': 10, 'category_machine': 'Excavator'},
-    {'id_sparepart': 'SP002', 'sparepart_name': 'Air Filter', 'quantity': 3, 'category_machine': 'Loader'},
-    {'id_sparepart': 'SP003', 'sparepart_name': 'Hydraulic Hose', 'quantity': 0, 'category_machine': 'Excavator'},
-    {'id_sparepart': 'SP004', 'sparepart_name': 'Spark Plug', 'quantity': 25, 'category_machine': 'Dump Truck'},
-    {'id_sparepart': 'SP005', 'sparepart_name': 'Brake Pad', 'quantity': 5, 'category_machine': 'Grader'},
-    {'id_sparepart': 'SP006', 'sparepart_name': 'Engine Gasket', 'quantity': 1, 'category_machine': 'Generator'},
+    {'part_number': 'PN-OF-001', 'sparepart_name': 'Oil Filter', 'quantity': 10, 'compatible_machine': 'Excavator', 'supplier': 'Supplier A', 'unit_price': 150000, 'location': 'Rack A1', 'last_updated': '2025-06-01'},
+    {'part_number': 'PN-AF-002', 'sparepart_name': 'Air Filter', 'quantity': 3, 'compatible_machine': 'Loader', 'supplier': 'Supplier B', 'unit_price': 120000, 'location': 'Rack A2', 'last_updated': '2025-06-05'},
+    {'part_number': 'PN-HH-003', 'sparepart_name': 'Hydraulic Hose', 'quantity': 0, 'compatible_machine': 'Excavator', 'supplier': 'Supplier C', 'unit_price': 550000, 'location': 'Rack B1', 'last_updated': '2025-05-20'},
+    {'part_number': 'PN-SP-004', 'sparepart_name': 'Spark Plug', 'quantity': 25, 'compatible_machine': 'Dump Truck', 'supplier': 'Supplier A', 'unit_price': 50000, 'location': 'Shelf C3', 'last_updated': '2025-06-10'},
+    {'part_number': 'PN-BP-005', 'sparepart_name': 'Brake Pad', 'quantity': 5, 'compatible_machine': 'Grader', 'supplier': 'Supplier D', 'unit_price': 350000, 'location': 'Rack B2', 'last_updated': '2025-05-15'},
+    {'part_number': 'PN-EG-006', 'sparepart_name': 'Engine Gasket', 'quantity': 1, 'compatible_machine': 'Generator', 'supplier': 'Supplier B', 'unit_price': 250000, 'location': 'Shelf D1', 'last_updated': '2025-06-08'},
   ];
 
   // Helper to determine status based on quantity
@@ -58,10 +58,10 @@ class WarehousePage extends StatelessWidget {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8.0),
-            SizedBox(
-              width: double.infinity,
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
               child: DataTable(
-                columnSpacing: 10.0,
+                columnSpacing: 12.0,
                 horizontalMargin: 8.0,
                 headingRowColor: WidgetStateColor.resolveWith((states) => Colors.blueGrey.shade100),
                 border: TableBorder.all(
@@ -70,10 +70,14 @@ class WarehousePage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8.0)
                 ),
                 columns: const <DataColumn>[
-                  DataColumn(label: Text('ID', style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text('Part Number', style: TextStyle(fontWeight: FontWeight.bold))),
                   DataColumn(label: Text('Name', style: TextStyle(fontWeight: FontWeight.bold))),
                   DataColumn(label: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('Category Machine', style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text('Compatible Machine', style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text('Supplier', style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text('Unit Price', style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text('Location', style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text('Last Updated', style: TextStyle(fontWeight: FontWeight.bold))),
                   DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
                   DataColumn(label: Text('Action', style: TextStyle(fontWeight: FontWeight.bold))),
                 ],
@@ -81,10 +85,14 @@ class WarehousePage extends StatelessWidget {
                   final statusInfo = _getSparepartStatus(item['quantity'] as int);
                   return DataRow(
                     cells: <DataCell>[
-                      DataCell(Text(item['id_sparepart']! as String)),
+                      DataCell(Text(item['part_number']! as String)),
                       DataCell(Text(item['sparepart_name']! as String)),
                       DataCell(Text((item['quantity'] as int).toString())),
-                      DataCell(Text(item['category_machine']! as String)),
+                      DataCell(Text(item['compatible_machine']! as String)),
+                      DataCell(Text(item['supplier']! as String)),
+                      DataCell(Text("Rp${item['unit_price']}")),
+                      DataCell(Text(item['location']! as String)),
+                      DataCell(Text(item['last_updated']! as String)),
                       DataCell(
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -108,7 +116,7 @@ class WarehousePage extends StatelessWidget {
                                 onPressed: () {
                                   // TODO: Implement edit action
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Edit action for ID: ${item['id_sparepart']}')),
+                                    SnackBar(content: Text('Edit action for Part Number: ${item['part_number']}')),
                                   );
                                 },
                                 padding: EdgeInsets.zero,
@@ -121,7 +129,7 @@ class WarehousePage extends StatelessWidget {
                                 onPressed: () {
                                   // TODO: Implement delete action
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Delete action for ID: ${item['id_sparepart']}')),
+                                    SnackBar(content: Text('Delete action for Part Number: ${item['part_number']}')),
                                   );
                                 },
                                 padding: EdgeInsets.zero,
