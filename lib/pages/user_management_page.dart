@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/app_drawer.dart';
-import 'login_page.dart'; // Needed for navigation
 
 class UserManagementPage extends StatefulWidget {
   const UserManagementPage({super.key});
@@ -28,19 +27,17 @@ class _UserManagementPageState extends State<UserManagementPage> {
     super.didChangeDependencies();
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is Map<String, dynamic>) {
-      // Get the role of the person viewing the page
       _currentUserRole = args['role'];
     }
     _fetchData();
   }
 
-
   Future<void> _fetchData() async {
-    setState(() { _isLoading = true; });
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
-      // The new RLS policy will automatically return all profiles if the
-      // logged-in user is an admin, or just their own if they are not.
       final profilesResponse = await _supabase
           .from('profiles')
           .select('id, username, role')
@@ -48,11 +45,10 @@ class _UserManagementPageState extends State<UserManagementPage> {
 
       _profiles = List<Map<String, dynamic>>.from(profilesResponse);
 
-      // Recalculate counts based on the fetched data
       _adminCount = _profiles.where((p) => p['role'] == 'Admin').length;
       _operatorCount = _profiles.where((p) => p['role'] == 'Operator').length;
-      _warehouseCount = _profiles.where((p) => p['role'] == 'Warehouse').length;
-
+      _warehouseCount =
+          _profiles.where((p) => p['role'] == 'Warehouse').length;
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -63,24 +59,28 @@ class _UserManagementPageState extends State<UserManagementPage> {
         );
       }
     } finally {
-      if (mounted) { setState(() { _isLoading = false; }); }
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  // Dialog for adding or editing a user's profile
   Future<void> _showUserDialog({Map<String, dynamic>? profile}) async {
-    // Other users should not be able to edit profiles.
     if (_currentUserRole != 'Admin') {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You do not have permission to edit users.')),
+        const SnackBar(
+            content: Text('You do not have permission to perform this action.')),
       );
       return;
     }
 
     final formKey = GlobalKey<FormState>();
-    final usernameController = TextEditingController(text: profile?['username']);
-    final emailController = TextEditingController(); // Only for adding new user
-    final passwordController = TextEditingController(); // Only for adding new user
+    final usernameController =
+    TextEditingController(text: profile?['username']);
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController();
     String selectedRole = profile?['role'] ?? 'Operator';
     final bool isEditing = profile != null;
 
@@ -98,26 +98,30 @@ class _UserManagementPageState extends State<UserManagementPage> {
                   TextFormField(
                     controller: usernameController,
                     decoration: const InputDecoration(labelText: 'Username'),
-                    validator: (v) => v!.isEmpty ? 'Username cannot be empty' : null,
+                    validator: (v) =>
+                    v!.isEmpty ? 'Username cannot be empty' : null,
                   ),
                   if (!isEditing) ...[
                     TextFormField(
                       controller: emailController,
                       decoration: const InputDecoration(labelText: 'Email'),
-                      validator: (v) => !v!.contains('@') ? 'Enter a valid email' : null,
+                      validator: (v) =>
+                      v == null || !v.contains('@') ? 'Enter a valid email' : null,
                     ),
                     TextFormField(
                       controller: passwordController,
                       decoration: const InputDecoration(labelText: 'Password'),
                       obscureText: true,
-                      validator: (v) => v!.length < 6 ? 'Min 6 characters' : null,
+                      validator: (v) =>
+                      v == null || v.length < 6 ? 'Min 6 characters' : null,
                     ),
                   ],
                   DropdownButtonFormField<String>(
                     value: selectedRole,
                     decoration: const InputDecoration(labelText: 'Role'),
                     items: ['Admin', 'Operator', 'Warehouse']
-                        .map((role) => DropdownMenuItem(value: role, child: Text(role)))
+                        .map((role) =>
+                        DropdownMenuItem(value: role, child: Text(role)))
                         .toList(),
                     onChanged: (value) => selectedRole = value!,
                   ),
@@ -135,28 +139,32 @@ class _UserManagementPageState extends State<UserManagementPage> {
                 if (formKey.currentState!.validate()) {
                   try {
                     if (isEditing) {
+                      // --- EDITING LOGIC ---
                       await _supabase.from('profiles').update({
-                        'username': usernameController.text,
+                        'username': usernameController.text.trim(),
                         'role': selectedRole,
                       }).eq('id', profile['id']);
                     } else {
-                      await _supabase.auth.signUp(
-                        email: emailController.text,
-                        password: passwordController.text,
-                        data: {'username': usernameController.text, 'role': selectedRole},
-                      );
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                          content: Text('User created. You have been logged out and the new user is now logged in.'),
-                          backgroundColor: Colors.orange,
-                          duration: Duration(seconds: 5),
-                        ));
-                        Navigator.of(context).pushNamedAndRemoveUntil(LoginPage.routeName, (route) => false);
-                        return;
-                      }
+                      // --- ADD USER LOGIC (CALLING EDGE FUNCTION) ---
+                      await _supabase.functions.invoke('create-user',
+                          body: {
+                            'email': emailController.text.trim(),
+                            'password': passwordController.text.trim(),
+                            'username': usernameController.text.trim(),
+                            'role': selectedRole,
+                          });
                     }
-                    if (mounted) Navigator.of(context).pop();
-                    _fetchData();
+
+                    if (mounted) {
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text(isEditing
+                            ? 'User updated successfully!'
+                            : 'User created successfully!'),
+                        backgroundColor: Colors.green,
+                      ));
+                      _fetchData();
+                    }
                   } catch (error) {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -175,7 +183,6 @@ class _UserManagementPageState extends State<UserManagementPage> {
     );
   }
 
-  // Delete a user's profile after confirmation
   Future<void> _deleteProfile(String id) async {
     if (_currentUserRole != 'Admin') {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -188,7 +195,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Deletion'),
-        content: const Text('Are you sure you want to delete this profile? The authenticated user will remain.'),
+        content: const Text('Are you sure you want to delete this profile? This will not delete the authenticated user.'),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
           TextButton(
@@ -204,6 +211,12 @@ class _UserManagementPageState extends State<UserManagementPage> {
       try {
         await _supabase.from('profiles').delete().eq('id', id);
         _fetchData();
+        if(mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Profile deleted successfully.'),
+            backgroundColor: Colors.green,
+          ));
+        }
       } catch (error) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -218,7 +231,6 @@ class _UserManagementPageState extends State<UserManagementPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Only show add/edit/delete buttons if the viewer is an Admin
     final bool isAdmin = _currentUserRole == 'Admin';
 
     return Scaffold(
@@ -244,7 +256,6 @@ class _UserManagementPageState extends State<UserManagementPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              // User role summary cards
               Row(
                 children: <Widget>[
                   Expanded(child: _buildUserCard(count: _adminCount, name: 'Admin', icon: Icons.admin_panel_settings, color: Colors.red.shade400)),
@@ -257,7 +268,6 @@ class _UserManagementPageState extends State<UserManagementPage> {
               const SizedBox(height: 24.0),
               const Text('User Profiles', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8.0),
-              // User profiles data table
               SizedBox(
                 width: double.infinity,
                 child: DataTable(
