@@ -8,9 +8,9 @@ import 'pages/dashboard_page.dart';
 import 'pages/user_profile_page.dart';
 import 'pages/attendance_page.dart';
 import 'pages/user_management_page.dart';
-import 'pages/warehouse_page.dart';
+import 'pages/workshop_page.dart';
 import 'pages/schedule_page.dart';
-import 'pages/spareparts_page.dart';
+import 'pages/warehouse_page.dart';
 import 'pages/repair_reports_page.dart';
 import 'pages/damage_reports_page.dart';
 import 'pages/attendance_reports_page.dart';
@@ -60,9 +60,9 @@ class MyApp extends StatelessWidget {
         UserProfilePage.routeName: (context) => const UserProfilePage(),
         AttendancePage.routeName: (context) => const AttendancePage(),
         UserManagementPage.routeName: (context) => const UserManagementPage(),
-        WarehousePage.routeName: (context) => const WarehousePage(),
+        WorkshopPage.routeName: (context) => const WorkshopPage(),
         SchedulePage.routeName: (context) => const SchedulePage(),
-        SparepartsPage.routeName: (context) => const SparepartsPage(),
+        WarehousePage.routeName: (context) => const WarehousePage(),
         RepairReportsPage.routeName: (context) => const RepairReportsPage(),
         DamageReportsPage.routeName: (context) => const DamageReportsPage(),
         AttendanceReportsPage.routeName: (context) => const AttendanceReportsPage(),

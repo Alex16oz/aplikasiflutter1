@@ -5,9 +5,9 @@ import '../pages/dashboard_page.dart';
 import '../pages/user_profile_page.dart';
 import '../pages/attendance_page.dart';
 import '../pages/user_management_page.dart';
-import '../pages/warehouse_page.dart';
+import '../pages/workshop_page.dart';
 import '../pages/schedule_page.dart';
-import '../pages/spareparts_page.dart';
+import '../pages/warehouse_page.dart';
 import '../pages/repair_reports_page.dart';
 import '../pages/damage_reports_page.dart';
 import '../pages/attendance_reports_page.dart';
@@ -108,10 +108,10 @@ class AppDrawer extends StatelessWidget {
           const _DrawerSectionHeader(title: 'DATA'),
           ListTile(
             leading: const Icon(Icons.store_mall_directory),
-            title: const Text('Warehouse'),
-            selected: currentRouteName == WarehousePage.routeName,
+            title: const Text('Workshop'),
+            selected: currentRouteName == WorkshopPage.routeName,
             onTap: () {
-              _navigateToPage(context, WarehousePage.routeName, replace: true, arguments: user);
+              _navigateToPage(context, WorkshopPage.routeName, replace: true, arguments: user);
             },
           ),
           ListTile(
@@ -124,10 +124,10 @@ class AppDrawer extends StatelessWidget {
           ),
           ListTile(
             leading: const Icon(Icons.build_circle_outlined),
-            title: const Text('Spareparts'),
-            selected: currentRouteName == SparepartsPage.routeName,
+            title: const Text('Warehouse'),
+            selected: currentRouteName == WarehousePage.routeName,
             onTap: () {
-              _navigateToPage(context, SparepartsPage.routeName, replace: true, arguments: user);
+              _navigateToPage(context, WarehousePage.routeName, replace: true, arguments: user);
             },
           ),
           const _DrawerSectionHeader(title: 'REPORTS'),
