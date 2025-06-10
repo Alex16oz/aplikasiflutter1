@@ -8,7 +8,6 @@ import 'sparepart_detail_page.dart';
 
 class WarehousePage extends StatefulWidget {
   const WarehousePage({super.key});
-
   static const String routeName = '/warehouse';
 
   @override
@@ -62,6 +61,16 @@ class _WarehousePageState extends State<WarehousePage> {
         backgroundColor: Theme.of(context).colorScheme.error,
       ),
     );
+  }
+
+  Map<String, dynamic> _getSparepartStatus(int totalStock, int minLevel) {
+    if (totalStock <= 0) {
+      return {'text': 'Kosong', 'color': Colors.red.shade400};
+    } else if (totalStock <= minLevel) {
+      return {'text': 'Hampir Habis', 'color': Colors.orange.shade400};
+    } else {
+      return {'text': 'Aman', 'color': Colors.green.shade400};
+    }
   }
 
   Future<void> _showAddSparepartMasterDialog() async {
@@ -218,23 +227,11 @@ class _WarehousePageState extends State<WarehousePage> {
       appBar: AppBar(
         title: const Text('Gudang Sparepart'),
         actions: <Widget>[
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh Data',
-            onPressed: _refreshData,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), tooltip: 'Refresh Data', onPressed: _refreshData),
           if (canManage)
-            IconButton(
-              icon: const Icon(Icons.add_box_outlined),
-              tooltip: 'Tambah Jenis Sparepart Baru',
-              onPressed: _showAddSparepartMasterDialog,
-            ),
+            IconButton(icon: const Icon(Icons.add_box_outlined), tooltip: 'Tambah Jenis Sparepart Baru', onPressed: _showAddSparepartMasterDialog),
           if (canManage)
-            IconButton(
-              icon: const Icon(Icons.add_shopping_cart),
-              tooltip: 'Catat Stok Masuk',
-              onPressed: _showAddStockInDialog,
-            ),
+            IconButton(icon: const Icon(Icons.add_shopping_cart), tooltip: 'Catat Stok Masuk', onPressed: _showAddStockInDialog),
         ],
       ),
       drawer: const AppDrawer(),
@@ -259,14 +256,32 @@ class _WarehousePageState extends State<WarehousePage> {
               itemCount: spareparts.length,
               itemBuilder: (context, index) {
                 final item = spareparts[index];
+                final statusInfo = _getSparepartStatus(item.totalStock, item.minimumStockLevel);
+
                 return Card(
                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   child: ListTile(
                     title: Text(item.sparepartName, style: const TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: Text('Part No: ${item.partNumber ?? "N/A"} | Lokasi: ${item.location ?? "N/A"}'),
-                    trailing: Text(
-                      'Stok: ${item.totalStock}',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+
+                    // =================================================================
+                    // PERBAIKAN: Mengganti Column menjadi Row untuk mengatasi overflow
+                    // =================================================================
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min, // Membuat Row hanya memakan ruang seperlunya
+                      children: [
+                        Text(
+                          'Stok: ${item.totalStock}',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(width: 8), // Memberi jarak antara teks dan chip
+                        Chip(
+                          label: Text(statusInfo['text'], style: const TextStyle(color: Colors.white, fontSize: 10)),
+                          backgroundColor: statusInfo['color'],
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ],
                     ),
                     onTap: () {
                       Navigator.push(

@@ -99,7 +99,7 @@ class _SparepartDetailPageState extends State<SparepartDetailPage> {
                           ? 'Stok Masuk dari ${tx.supplier ?? "N/A"}'
                           : 'Stok Keluar'),
                       subtitle: Text(
-                          DateFormat('dd MMM yyyy, HH:mm').format(tx.transactionDate.toLocal())),
+                          DateFormat('dd MMM<y_bin_621>, HH:mm').format(tx.transactionDate.toLocal())),
                       trailing: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.end,

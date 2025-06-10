@@ -6,6 +6,7 @@ class SparepartSummary {
   final String sparepartName;
   final String? location;
   final int totalStock;
+  final int minimumStockLevel;
 
   SparepartSummary({
     required this.id,
@@ -13,6 +14,7 @@ class SparepartSummary {
     required this.sparepartName,
     this.location,
     required this.totalStock,
+    required this.minimumStockLevel,
   });
 
   factory SparepartSummary.fromJson(Map<String, dynamic> json) {
@@ -22,6 +24,7 @@ class SparepartSummary {
       sparepartName: json['sparepart_name'],
       location: json['location'],
       totalStock: (json['total_stock'] as num).toInt(),
+      minimumStockLevel: json['minimum_stock_level'] ?? 0,
     );
   }
 }
