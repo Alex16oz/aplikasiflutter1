@@ -51,8 +51,9 @@ class _SparepartDetailPageState extends State<SparepartDetailPage> {
       ),
       body: Column(
         children: [
+          // CARD UNTUK TOTAL STOK
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Card(
               child: ListTile(
                 title: Text("Total Stok Saat Ini",
@@ -67,12 +68,34 @@ class _SparepartDetailPageState extends State<SparepartDetailPage> {
               ),
             ),
           ),
-          const Divider(height: 1),
+
+          // =================================================================
+          // CARD BARU UNTUK MENAMPILKAN DESKRIPSI
+          // =================================================================
+          if (widget.sparepartSummary.description != null &&
+              widget.sparepartSummary.description!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Card(
+                child: ListTile(
+                  leading: const Icon(Icons.description_outlined),
+                  title: const Text("Deskripsi"),
+                  subtitle: Text(
+                    widget.sparepartSummary.description!,
+                  ),
+                ),
+              ),
+            ),
+
+          const Divider(height: 24),
           const Padding(
-            padding: EdgeInsets.all(16.0),
+            padding: EdgeInsets.symmetric(horizontal: 16.0),
             child: Text("Riwayat Transaksi",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ),
+          const SizedBox(height: 8),
+
+          // LIST UNTUK RIWAYAT TRANSAKSI
           Expanded(
             child: FutureBuilder<List<StockTransaction>>(
               future: _transactionsFuture,
@@ -86,36 +109,40 @@ class _SparepartDetailPageState extends State<SparepartDetailPage> {
                 }
                 final transactions = snapshot.data!;
                 return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
                   itemCount: transactions.length,
                   itemBuilder: (context, index) {
                     final tx = transactions[index];
                     final isStockIn = tx.transactionType == 'IN';
-                    return ListTile(
-                      leading: Icon(
-                        isStockIn ? Icons.arrow_downward : Icons.arrow_upward,
-                        color: isStockIn ? Colors.green : Colors.red,
-                      ),
-                      title: Text(isStockIn
-                          ? 'Stok Masuk dari ${tx.supplier ?? "N/A"}'
-                          : 'Stok Keluar'),
-                      subtitle: Text(
-                          DateFormat('dd MMM<y_bin_621>, HH:mm').format(tx.transactionDate.toLocal())),
-                      trailing: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            '${isStockIn ? "+" : "-"} ${tx.quantity}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: isStockIn ? Colors.green : Colors.red,
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      child: ListTile(
+                        leading: Icon(
+                          isStockIn ? Icons.arrow_downward : Icons.arrow_upward,
+                          color: isStockIn ? Colors.green : Colors.red,
+                        ),
+                        title: Text(isStockIn
+                            ? 'Stok Masuk dari ${tx.supplier ?? "N/A"}'
+                            : 'Stok Keluar'),
+                        subtitle: Text(
+                            DateFormat('dd MMM yyyy, HH:mm').format(tx.transactionDate.toLocal())),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              '${isStockIn ? "+" : "-"} ${tx.quantity}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: isStockIn ? Colors.green : Colors.red,
+                              ),
                             ),
-                          ),
-                          if (isStockIn && tx.unitPrice != null)
-                            Text(NumberFormat.currency(
-                                locale: 'id_ID', symbol: 'Rp ')
-                                .format(tx.unitPrice)),
-                        ],
+                            if (isStockIn && tx.unitPrice != null)
+                              Text(NumberFormat.currency(
+                                  locale: 'id_ID', symbol: 'Rp ')
+                                  .format(tx.unitPrice)),
+                          ],
+                        ),
                       ),
                     );
                   },

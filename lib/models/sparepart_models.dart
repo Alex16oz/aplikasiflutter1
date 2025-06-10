@@ -5,6 +5,7 @@ class SparepartSummary {
   final String? partNumber;
   final String sparepartName;
   final String? location;
+  final String? description; // <-- TAMBAHKAN PROPERTI INI
   final int totalStock;
   final int minimumStockLevel;
 
@@ -13,6 +14,7 @@ class SparepartSummary {
     this.partNumber,
     required this.sparepartName,
     this.location,
+    this.description, // <-- TAMBAHKAN DI KONSTRUKTOR
     required this.totalStock,
     required this.minimumStockLevel,
   });
@@ -23,6 +25,7 @@ class SparepartSummary {
       partNumber: json['part_number'],
       sparepartName: json['sparepart_name'],
       location: json['location'],
+      description: json['description'], // <-- TAMBAHKAN PARSING JSON
       totalStock: (json['total_stock'] as num).toInt(),
       minimumStockLevel: json['minimum_stock_level'] ?? 0,
     );

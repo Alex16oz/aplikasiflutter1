@@ -55,6 +55,7 @@ class _WarehousePageState extends State<WarehousePage> {
   }
 
   void _showErrorSnackBar(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -73,18 +74,25 @@ class _WarehousePageState extends State<WarehousePage> {
     }
   }
 
-  Future<void> _showAddSparepartMasterDialog() async {
+  // =================================================================
+  // FUNGSI DIALOG UNTUK TAMBAH & EDIT MASTER SPAREPART
+  // =================================================================
+  Future<void> _showSparepartMasterDialog({SparepartSummary? item}) async {
+    final bool isEditing = item != null;
     final formKey = GlobalKey<FormState>();
-    final partNumberController = TextEditingController();
-    final nameController = TextEditingController();
+    final partNumberController = TextEditingController(text: item?.partNumber);
+    final nameController = TextEditingController(text: item?.sparepartName);
+    // Untuk deskripsi dan lokasi, kita perlu fetch data lengkap karena tidak ada di summary
+    // Namun untuk simple edit, kita bisa biarkan kosong atau fetch saat dialog dibuka.
+    // Di sini kita biarkan kosong jika tidak ada di summary.
     final descriptionController = TextEditingController();
-    final locationController = TextEditingController();
-    final minStockController = TextEditingController();
+    final locationController = TextEditingController(text: item?.location);
+    final minStockController = TextEditingController(text: item?.minimumStockLevel.toString());
 
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Daftarkan Jenis Sparepart Baru'),
+        title: Text(isEditing ? 'Edit Jenis Sparepart' : 'Daftarkan Jenis Sparepart Baru'),
         content: Form(
           key: formKey,
           child: SingleChildScrollView(
@@ -93,7 +101,7 @@ class _WarehousePageState extends State<WarehousePage> {
               children: [
                 TextFormField(controller: partNumberController, decoration: const InputDecoration(labelText: 'Nomor Part'), validator: (v) => v!.isEmpty ? 'Wajib diisi' : null),
                 TextFormField(controller: nameController, decoration: const InputDecoration(labelText: 'Nama Sparepart'), validator: (v) => v!.isEmpty ? 'Wajib diisi' : null),
-                TextFormField(controller: descriptionController, decoration: const InputDecoration(labelText: 'Deskripsi')),
+                TextFormField(controller: descriptionController, decoration: const InputDecoration(labelText: 'Deskripsi (Opsional)')),
                 TextFormField(controller: locationController, decoration: const InputDecoration(labelText: 'Lokasi Penyimpanan')),
                 TextFormField(controller: minStockController, decoration: const InputDecoration(labelText: 'Stok Minimum'), keyboardType: TextInputType.number),
               ],
@@ -106,16 +114,24 @@ class _WarehousePageState extends State<WarehousePage> {
             onPressed: () async {
               if (formKey.currentState!.validate()) {
                 try {
-                  await _supabase.from('spareparts').insert({
+                  final data = {
                     'part_number': partNumberController.text.trim(),
                     'sparepart_name': nameController.text.trim(),
                     'description': descriptionController.text.trim(),
                     'location': locationController.text.trim(),
                     'minimum_stock_level': int.tryParse(minStockController.text.trim()) ?? 0,
-                  });
+                  };
+
+                  if (isEditing) {
+                    await _supabase.from('spareparts').update(data).eq('id', item.id);
+                  } else {
+                    await _supabase.from('spareparts').insert(data);
+                  }
+
                   if (mounted) {
                     Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Jenis sparepart baru berhasil ditambahkan!'), backgroundColor: Colors.green));
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Data berhasil ${isEditing ? 'diperbarui' : 'disimpan'}!'), backgroundColor: Colors.green));
+                    _refreshData();
                   }
                 } catch(e) {
                   if (mounted) {
@@ -134,6 +150,40 @@ class _WarehousePageState extends State<WarehousePage> {
       ),
     );
   }
+
+  // =================================================================
+  // FUNGSI BARU UNTUK HAPUS MASTER SPAREPART
+  // =================================================================
+  Future<void> _deleteSparepartMaster(int id, String name) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Konfirmasi Hapus'),
+        content: Text('Apakah Anda yakin ingin menghapus "$name"?\n\nPERINGATAN: Semua riwayat transaksi untuk sparepart ini juga akan ikut terhapus secara permanen.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _supabase.from('spareparts').delete().eq('id', id);
+        if(mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Data berhasil dihapus.'), backgroundColor: Colors.green));
+          _refreshData();
+        }
+      } catch (e) {
+        _showErrorSnackBar('Gagal menghapus data: $e');
+      }
+    }
+  }
+
 
   Future<void> _showAddStockInDialog() async {
     final allSpareparts = await _supabase.from('spareparts').select('id, sparepart_name, part_number').order('sparepart_name');
@@ -238,7 +288,7 @@ class _WarehousePageState extends State<WarehousePage> {
         actions: <Widget>[
           IconButton(icon: const Icon(Icons.refresh), tooltip: 'Refresh Data', onPressed: _refreshData),
           if (canManage)
-            IconButton(icon: const Icon(Icons.add_box_outlined), tooltip: 'Tambah Jenis Sparepart Baru', onPressed: _showAddSparepartMasterDialog),
+            IconButton(icon: const Icon(Icons.add_box_outlined), tooltip: 'Tambah Jenis Sparepart Baru', onPressed: () => _showSparepartMasterDialog()),
           if (canManage)
             IconButton(icon: const Icon(Icons.add_shopping_cart), tooltip: 'Catat Stok Masuk', onPressed: _showAddStockInDialog),
         ],
@@ -261,9 +311,6 @@ class _WarehousePageState extends State<WarehousePage> {
 
             final spareparts = snapshot.data!;
 
-            // =================================================================
-            // PERUBAHAN UTAMA: Menggunakan SingleChildScrollView dan DataTable
-            // =================================================================
             return SingleChildScrollView(
               scrollDirection: Axis.vertical,
               child: SingleChildScrollView(
@@ -296,12 +343,31 @@ class _WarehousePageState extends State<WarehousePage> {
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           ),
                         ),
+                        // =================================================================
+                        // KOLOM AKSI DENGAN TOMBOL VIEW, EDIT, DAN DELETE
+                        // =================================================================
                         DataCell(
-                          IconButton(
-                            icon: Icon(Icons.visibility, color: Colors.blue.shade700),
-                            tooltip: 'Lihat Detail',
-                            onPressed: () => _navigateToDetail(item),
-                          ),
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: Icon(Icons.visibility, color: Colors.blue.shade700, size: 20),
+                                  tooltip: 'Lihat Detail',
+                                  onPressed: () => _navigateToDetail(item),
+                                ),
+                                if (canManage) ...[
+                                  IconButton(
+                                    icon: Icon(Icons.edit, color: Colors.orange.shade800, size: 20),
+                                    tooltip: 'Edit Jenis Sparepart',
+                                    onPressed: () => _showSparepartMasterDialog(item: item),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.delete, color: Colors.red.shade700, size: 20),
+                                    tooltip: 'Hapus Jenis Sparepart',
+                                    onPressed: () => _deleteSparepartMaster(item.id, item.sparepartName),
+                                  ),
+                                ],
+                              ],
+                            )
                         ),
                       ],
                     );
