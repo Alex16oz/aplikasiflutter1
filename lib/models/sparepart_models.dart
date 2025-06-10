@@ -5,7 +5,7 @@ class SparepartSummary {
   final String? partNumber;
   final String sparepartName;
   final String? location;
-  final String? description; // <-- TAMBAHKAN PROPERTI INI
+  final String? description;
   final int totalStock;
   final int minimumStockLevel;
 
@@ -14,20 +14,23 @@ class SparepartSummary {
     this.partNumber,
     required this.sparepartName,
     this.location,
-    this.description, // <-- TAMBAHKAN DI KONSTRUKTOR
+    this.description,
     required this.totalStock,
     required this.minimumStockLevel,
   });
 
+  // FUNGSI INI SUDAH DIPERBAIKI UNTUK AMAN DARI NILAI NULL
   factory SparepartSummary.fromJson(Map<String, dynamic> json) {
     return SparepartSummary(
-      id: json['id'],
+      id: json['id'] ?? -1,
       partNumber: json['part_number'],
-      sparepartName: json['sparepart_name'],
+      sparepartName: json['sparepart_name'] ?? 'Unknown Sparepart',
       location: json['location'],
-      description: json['description'], // <-- TAMBAHKAN PARSING JSON
-      totalStock: (json['total_stock'] as num).toInt(),
-      minimumStockLevel: json['minimum_stock_level'] ?? 0,
+      description: json['description'],
+
+      // PERBAIKAN UTAMA: Mengubah null menjadi 0 untuk mencegah error
+      totalStock: (json['total_stock'] as num?)?.toInt() ?? 0,
+      minimumStockLevel: (json['minimum_stock_level'] as num?)?.toInt() ?? 0,
     );
   }
 }
