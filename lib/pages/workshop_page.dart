@@ -161,7 +161,7 @@ class _WorkshopPageState extends State<WorkshopPage> {
                     'location': locationController.text.trim(),
                     'purchase_date': purchaseDateController.text.trim().isEmpty ? null : purchaseDateController.text.trim(),
                     'operational_status': statusController.text.trim(),
-                    // 'last_maintenance_date' tidak lagi dimasukkan dari sini
+                    // 'last_maintenance_date' tidak lagi dimasukkan dari sini ,
                   };
                   try {
                     if (isEditing) {
