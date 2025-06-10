@@ -219,6 +219,15 @@ class _WarehousePageState extends State<WarehousePage> {
     );
   }
 
+  void _navigateToDetail(SparepartSummary item) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SparepartDetailPage(sparepartSummary: item),
+      ),
+    ).then((_) => _refreshData());
+  }
+
   @override
   Widget build(BuildContext context) {
     final canManage = _currentUserRole == 'Admin' || _currentUserRole == 'Warehouse Staff';
@@ -252,48 +261,53 @@ class _WarehousePageState extends State<WarehousePage> {
 
             final spareparts = snapshot.data!;
 
-            return ListView.builder(
-              itemCount: spareparts.length,
-              itemBuilder: (context, index) {
-                final item = spareparts[index];
-                final statusInfo = _getSparepartStatus(item.totalStock, item.minimumStockLevel);
-
-                return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  child: ListTile(
-                    title: Text(item.sparepartName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text('Part No: ${item.partNumber ?? "N/A"} | Lokasi: ${item.location ?? "N/A"}'),
-
-                    // =================================================================
-                    // PERBAIKAN: Mengganti Column menjadi Row untuk mengatasi overflow
-                    // =================================================================
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min, // Membuat Row hanya memakan ruang seperlunya
-                      children: [
-                        Text(
-                          'Stok: ${item.totalStock}',
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+            // =================================================================
+            // PERUBAHAN UTAMA: Menggunakan SingleChildScrollView dan DataTable
+            // =================================================================
+            return SingleChildScrollView(
+              scrollDirection: Axis.vertical,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.all(16.0),
+                child: DataTable(
+                  columnSpacing: 20.0,
+                  headingRowColor: WidgetStateColor.resolveWith((states) => Colors.blueGrey.shade100),
+                  border: TableBorder.all(color: Colors.grey.shade400, width: 1, borderRadius: BorderRadius.circular(8.0)),
+                  columns: const <DataColumn>[
+                    DataColumn(label: Text('Part Number', style: TextStyle(fontWeight: FontWeight.bold))),
+                    DataColumn(label: Text('Nama Sparepart', style: TextStyle(fontWeight: FontWeight.bold))),
+                    DataColumn(label: Text('Lokasi', style: TextStyle(fontWeight: FontWeight.bold))),
+                    DataColumn(label: Text('Total Stok', style: TextStyle(fontWeight: FontWeight.bold))),
+                    DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
+                    DataColumn(label: Text('Aksi', style: TextStyle(fontWeight: FontWeight.bold))),
+                  ],
+                  rows: spareparts.map((item) {
+                    final statusInfo = _getSparepartStatus(item.totalStock, item.minimumStockLevel);
+                    return DataRow(
+                      cells: <DataCell>[
+                        DataCell(Text(item.partNumber ?? 'N/A')),
+                        DataCell(Text(item.sparepartName)),
+                        DataCell(Text(item.location ?? 'N/A')),
+                        DataCell(Text(item.totalStock.toString())),
+                        DataCell(
+                          Chip(
+                            label: Text(statusInfo['text'], style: const TextStyle(color: Colors.white, fontSize: 12)),
+                            backgroundColor: statusInfo['color'],
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          ),
                         ),
-                        const SizedBox(width: 8), // Memberi jarak antara teks dan chip
-                        Chip(
-                          label: Text(statusInfo['text'], style: const TextStyle(color: Colors.white, fontSize: 10)),
-                          backgroundColor: statusInfo['color'],
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        DataCell(
+                          IconButton(
+                            icon: Icon(Icons.visibility, color: Colors.blue.shade700),
+                            tooltip: 'Lihat Detail',
+                            onPressed: () => _navigateToDetail(item),
+                          ),
                         ),
                       ],
-                    ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => SparepartDetailPage(sparepartSummary: item),
-                        ),
-                      ).then((_) => _refreshData());
-                    },
-                  ),
-                );
-              },
+                    );
+                  }).toList(),
+                ),
+              ),
             );
           },
         ),
