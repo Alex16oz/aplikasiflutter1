@@ -60,6 +60,69 @@ class _WorkshopPageState extends State<WorkshopPage> {
     });
   }
 
+  // DIALOG UNTUK MELAPORKAN KERUSAKAN (UNTUK OPERATOR)
+  Future<void> _showReportDamageDialog(int machineId, String machineName) async {
+    final formKey = GlobalKey<FormState>();
+    final descriptionController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Report Damage for $machineName'),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: descriptionController,
+            decoration: const InputDecoration(
+              labelText: 'Description of Damage',
+              alignLabelWithHint: true,
+              border: OutlineInputBorder(),
+            ),
+            maxLines: 4,
+            validator: (v) => v!.isEmpty ? 'Description is required' : null,
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                try {
+                  final currentUser = _supabase.auth.currentUser;
+                  if (currentUser == null) throw 'User not authenticated';
+
+                  await _supabase.from('damage_reports').insert({
+                    'machine_id': machineId,
+                    'reported_by': currentUser.id,
+                    'description': descriptionController.text.trim(),
+                    'status': 'Pending',
+                  });
+
+                  if (mounted) {
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Damage report submitted successfully!'),
+                      backgroundColor: Colors.green,
+                    ));
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text('Failed to submit report: $e'),
+                      backgroundColor: Colors.red,
+                    ));
+                  }
+                }
+              }
+            },
+            child: const Text('Submit Report'),
+          ),
+        ],
+      ),
+    );
+  }
+
+
   Color _getStatusColor(String? status) {
     switch (status?.toLowerCase()) {
       case 'operasional':
@@ -85,12 +148,9 @@ class _WorkshopPageState extends State<WorkshopPage> {
     }
   }
 
-  // --- DIALOG UNTUK TAMBAH/UBAH MESIN ---
   Future<void> _showMachineDialog({Map<String, dynamic>? machine}) async {
     final formKey = GlobalKey<FormState>();
     final isEditing = machine != null;
-
-    // Controllers untuk setiap field
     final serialController = TextEditingController(text: machine?['serial_number']);
     final nameController = TextEditingController(text: machine?['machine_name']);
     final modelController = TextEditingController(text: machine?['model_number']);
@@ -116,7 +176,6 @@ class _WorkshopPageState extends State<WorkshopPage> {
                   TextFormField(controller: manufacturerController, decoration: const InputDecoration(labelText: 'Manufacturer')),
                   TextFormField(controller: categoryController, decoration: const InputDecoration(labelText: 'Category')),
                   TextFormField(controller: locationController, decoration: const InputDecoration(labelText: 'Location')),
-                  // --- PERUBAHAN: Input Tanggal dengan Date Picker ---
                   TextFormField(
                     controller: purchaseDateController,
                     decoration: const InputDecoration(
@@ -124,24 +183,20 @@ class _WorkshopPageState extends State<WorkshopPage> {
                       hintText: 'Select date',
                       suffixIcon: Icon(Icons.calendar_today),
                     ),
-                    readOnly: true, // Membuat field tidak bisa diketik manual
+                    readOnly: true,
                     onTap: () async {
-                      // Tampilkan date picker saat field diklik
                       DateTime? pickedDate = await showDatePicker(
                           context: context,
                           initialDate: DateTime.now(),
                           firstDate: DateTime(2000),
                           lastDate: DateTime(2101));
-
                       if (pickedDate != null) {
-                        // Format tanggal dan set ke controller
                         String formattedDate = DateFormat('yyyy-MM-dd').format(pickedDate);
                         purchaseDateController.text = formattedDate;
                       }
                     },
                   ),
                   TextFormField(controller: statusController, decoration: const InputDecoration(labelText: 'Operational Status')),
-                  // --- PERUBAHAN: Input 'last_maintenance_date' dihilangkan ---
                 ],
               ),
             ),
@@ -151,7 +206,6 @@ class _WorkshopPageState extends State<WorkshopPage> {
             ElevatedButton(
               onPressed: () async {
                 if (formKey.currentState!.validate()) {
-                  // Data yang akan dikirim ke Supabase
                   final data = {
                     'serial_number': serialController.text.trim(),
                     'machine_name': nameController.text.trim(),
@@ -161,7 +215,6 @@ class _WorkshopPageState extends State<WorkshopPage> {
                     'location': locationController.text.trim(),
                     'purchase_date': purchaseDateController.text.trim().isEmpty ? null : purchaseDateController.text.trim(),
                     'operational_status': statusController.text.trim(),
-                    // 'last_maintenance_date' tidak lagi dimasukkan dari sini ,
                   };
                   try {
                     if (isEditing) {
@@ -218,6 +271,7 @@ class _WorkshopPageState extends State<WorkshopPage> {
   @override
   Widget build(BuildContext context) {
     final canManage = _currentUserRole == 'Admin' || _currentUserRole == 'Warehouse Staff';
+    final isOperator = _currentUserRole == 'Operator';
 
     return Scaffold(
       appBar: AppBar(
@@ -257,68 +311,58 @@ class _WorkshopPageState extends State<WorkshopPage> {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  const Text('Machine List', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8.0),
-                  DataTable(
-                    columnSpacing: 12.0,
-                    horizontalMargin: 8.0,
-                    headingRowColor: WidgetStateColor.resolveWith((states) => Colors.blueGrey.shade100),
-                    border: TableBorder.all(color: Colors.grey.shade400, width: 1, borderRadius: BorderRadius.circular(8.0)),
-                    columns: <DataColumn>[
-                      const DataColumn(label: Text('Serial Number', style: TextStyle(fontWeight: FontWeight.bold))),
-                      const DataColumn(label: Text('Machine Name', style: TextStyle(fontWeight: FontWeight.bold))),
-                      const DataColumn(label: Text('Model', style: TextStyle(fontWeight: FontWeight.bold))),
-                      const DataColumn(label: Text('Manufacturer', style: TextStyle(fontWeight: FontWeight.bold))),
-                      const DataColumn(label: Text('Purchase Date', style: TextStyle(fontWeight: FontWeight.bold))),
-                      const DataColumn(label: Text('Last Maintenance', style: TextStyle(fontWeight: FontWeight.bold))),
-                      const DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
-                      if (canManage) const DataColumn(label: Text('Action', style: TextStyle(fontWeight: FontWeight.bold))),
-                    ],
-                    rows: machines.map((item) {
-                      return DataRow(
-                        cells: <DataCell>[
-                          DataCell(Text(item['serial_number'] ?? '')),
-                          DataCell(Text(item['machine_name'] ?? '')),
-                          DataCell(Text(item['model_number'] ?? 'N/A')),
-                          DataCell(Text(item['manufacturer'] ?? 'N/A')),
-                          DataCell(Text(_formatDate(item['purchase_date']))),
-                          DataCell(Text(_formatDate(item['last_maintenance_date']))),
-                          DataCell(
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(color: _getStatusColor(item['operational_status']), borderRadius: BorderRadius.circular(4)),
-                              child: Text(item['operational_status'] ?? 'N/A', style: const TextStyle(color: Colors.white, fontSize: 12)),
-                            ),
-                          ),
-                          if (canManage)
-                            DataCell(Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: Icon(Icons.edit, size: 20, color: Colors.blue.shade700),
-                                  tooltip: 'Edit',
-                                  onPressed: () => _showMachineDialog(machine: item),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                ),
-                                const SizedBox(width: 4),
-                                IconButton(
-                                  icon: Icon(Icons.delete, size: 20, color: Colors.red.shade700),
-                                  tooltip: 'Delete',
-                                  onPressed: () => _deleteMachine(item['id']),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                ),
-                              ],
-                            )),
-                        ],
-                      );
-                    }).toList(),
-                  ),
+              child: DataTable(
+                columnSpacing: 12.0,
+                horizontalMargin: 8.0,
+                headingRowColor: WidgetStateColor.resolveWith((states) => Colors.blueGrey.shade100),
+                border: TableBorder.all(color: Colors.grey.shade400, width: 1, borderRadius: BorderRadius.circular(8.0)),
+                columns: <DataColumn>[
+                  const DataColumn(label: Text('Serial Number', style: TextStyle(fontWeight: FontWeight.bold))),
+                  const DataColumn(label: Text('Machine Name', style: TextStyle(fontWeight: FontWeight.bold))),
+                  const DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
+                  const DataColumn(label: Text('Last Maintenance', style: TextStyle(fontWeight: FontWeight.bold))),
+                  const DataColumn(label: Text('Action', style: TextStyle(fontWeight: FontWeight.bold))),
                 ],
+                rows: machines.map((item) {
+                  return DataRow(
+                    cells: <DataCell>[
+                      DataCell(Text(item['serial_number'] ?? '')),
+                      DataCell(Text(item['machine_name'] ?? '')),
+                      DataCell(
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(color: _getStatusColor(item['operational_status']), borderRadius: BorderRadius.circular(4)),
+                          child: Text(item['operational_status'] ?? 'N/A', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                        ),
+                      ),
+                      DataCell(Text(_formatDate(item['last_maintenance_date']))),
+                      DataCell(Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (canManage) ...[
+                            IconButton(
+                              icon: Icon(Icons.edit, size: 20, color: Colors.blue.shade700),
+                              tooltip: 'Edit',
+                              onPressed: () => _showMachineDialog(machine: item),
+                            ),
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: Icon(Icons.delete, size: 20, color: Colors.red.shade700),
+                              tooltip: 'Delete',
+                              onPressed: () => _deleteMachine(item['id']),
+                            ),
+                          ],
+                          if (isOperator)
+                            IconButton(
+                              icon: Icon(Icons.warning_amber_rounded, size: 20, color: Colors.orange.shade800),
+                              tooltip: 'Report Damage',
+                              onPressed: () => _showReportDamageDialog(item['id'], item['machine_name']),
+                            ),
+                        ],
+                      )),
+                    ],
+                  );
+                }).toList(),
               ),
             ),
           );
