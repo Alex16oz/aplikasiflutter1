@@ -260,9 +260,9 @@ class _UserManagementPageState extends State<UserManagementPage> {
 
     if (confirmed == true) {
       try {
-        // Panggil edge function 'delete-user'
+// Di dalam method _deleteProfile
         final response = await _supabase.functions.invoke(
-          'delete-user',
+          'soft-delete-user', // <--- UBAH INI
           body: {'user_id': id},
         );
 
