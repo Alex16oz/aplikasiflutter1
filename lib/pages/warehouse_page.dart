@@ -18,11 +18,12 @@ class _WarehousePageState extends State<WarehousePage> {
   late Future<List<SparepartSummary>> _sparepartsFuture;
   final _supabase = Supabase.instance.client;
   String? _currentUserRole;
+  List<SparepartSummary> _currentSummaries = []; // Cache the summary list
 
   @override
   void initState() {
     super.initState();
-    _sparepartsFuture = _fetchSparepartsSummary();
+    _refreshData(); // Panggil refresh data saat inisialisasi
   }
 
   @override
@@ -34,24 +35,41 @@ class _WarehousePageState extends State<WarehousePage> {
     }
   }
 
-  Future<List<SparepartSummary>> _fetchSparepartsSummary() async {
+  Future<void> _fetchSparepartsSummary() async {
     try {
       final response = await _supabase.rpc('get_spareparts_summary');
-      return (response as List)
+      final data = (response as List)
           .map((item) => SparepartSummary.fromJson(item))
           .toList();
+      if (mounted) {
+        setState(() {
+          _currentSummaries = data;
+        });
+      }
     } catch (e) {
       if (mounted) {
         _showErrorSnackBar('Error fetching data: $e');
       }
-      return [];
     }
   }
 
   void _refreshData() {
     setState(() {
-      _sparepartsFuture = _fetchSparepartsSummary();
+      _sparepartsFuture = _fetchAndReturnSparepartsSummary();
     });
+  }
+
+  Future<List<SparepartSummary>> _fetchAndReturnSparepartsSummary() async {
+    final response = await _supabase.rpc('get_spareparts_summary');
+    final data = (response as List)
+        .map((item) => SparepartSummary.fromJson(item))
+        .toList();
+    if (mounted) {
+      setState(() {
+        _currentSummaries = data;
+      });
+    }
+    return data;
   }
 
   void _showErrorSnackBar(String message) {
@@ -74,20 +92,19 @@ class _WarehousePageState extends State<WarehousePage> {
     }
   }
 
-  // =================================================================
-  // FUNGSI DIALOG UNTUK TAMBAH & EDIT MASTER SPAREPART
-  // =================================================================
   Future<void> _showSparepartMasterDialog({SparepartSummary? item}) async {
     final bool isEditing = item != null;
     final formKey = GlobalKey<FormState>();
     final partNumberController = TextEditingController(text: item?.partNumber);
     final nameController = TextEditingController(text: item?.sparepartName);
-    // Untuk deskripsi dan lokasi, kita perlu fetch data lengkap karena tidak ada di summary
-    // Namun untuk simple edit, kita bisa biarkan kosong atau fetch saat dialog dibuka.
-    // Di sini kita biarkan kosong jika tidak ada di summary.
     final descriptionController = TextEditingController();
     final locationController = TextEditingController(text: item?.location);
     final minStockController = TextEditingController(text: item?.minimumStockLevel.toString());
+
+    if (isEditing && item?.id != null) {
+      final fullData = await _supabase.from('spareparts').select('description').eq('id', item!.id).single();
+      descriptionController.text = fullData['description'] ?? '';
+    }
 
     await showDialog(
       context: context,
@@ -151,9 +168,6 @@ class _WarehousePageState extends State<WarehousePage> {
     );
   }
 
-  // =================================================================
-  // FUNGSI BARU UNTUK HAPUS MASTER SPAREPART
-  // =================================================================
   Future<void> _deleteSparepartMaster(int id, String name) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -269,6 +283,217 @@ class _WarehousePageState extends State<WarehousePage> {
     );
   }
 
+  // =================================================================
+  // FUNGSI DIALOG BARU UNTUK CATAT STOK KELUAR
+  // =================================================================
+  Future<void> _showAddStockOutDialog() async {
+    if (_currentSummaries.isEmpty) {
+      _showErrorSnackBar("Data sparepart belum termuat. Silakan coba lagi.");
+      return;
+    }
+
+    final formKey = GlobalKey<FormState>();
+    SparepartSummary? selectedSparepart;
+    final qtyController = TextEditingController();
+    final purposeController = TextEditingController();
+    final retrievalDateController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Catat Stok Keluar'),
+        content: Form(
+          key: formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<SparepartSummary>(
+                  hint: const Text('Pilih Sparepart'),
+                  isExpanded: true,
+                  items: _currentSummaries.map((sparepart) {
+                    return DropdownMenuItem<SparepartSummary>(
+                      value: sparepart,
+                      child: Text("${sparepart.sparepartName} (Stok: ${sparepart.totalStock})"),
+                    );
+                  }).toList(),
+                  onChanged: (value) => selectedSparepart = value,
+                  validator: (v) => v == null ? 'Sparepart harus dipilih' : null,
+                ),
+                TextFormField(
+                  controller: qtyController,
+                  decoration: const InputDecoration(labelText: 'Jumlah yang Diambil'),
+                  keyboardType: TextInputType.number,
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Wajib diisi';
+                    final qty = int.tryParse(v);
+                    if (qty == null || qty <= 0) return 'Jumlah tidak valid';
+                    if (selectedSparepart != null && qty > selectedSparepart!.totalStock) {
+                      return 'Stok tidak mencukupi (sisa: ${selectedSparepart!.totalStock})';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                    controller: purposeController,
+                    decoration: const InputDecoration(labelText: 'Tujuan Pengambilan'),
+                    validator: (v) => v!.isEmpty ? 'Wajib diisi' : null
+                ),
+                TextFormField(
+                  controller: retrievalDateController,
+                  decoration: const InputDecoration(labelText: 'Tanggal Pengambilan', hintText: 'YYYY-MM-DD'),
+                  readOnly: true,
+                  onTap: () async {
+                    DateTime? pickedDate = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2101));
+                    if (pickedDate != null) {
+                      retrievalDateController.text = DateFormat('yyyy-MM-dd').format(pickedDate);
+                    }
+                  },
+                  validator: (v) => v!.isEmpty ? 'Tanggal wajib diisi' : null,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                try {
+                  await _supabase.from('stock_transactions').insert({
+                    'sparepart_id': selectedSparepart!.id,
+                    'transaction_type': 'OUT',
+                    'quantity': int.parse(qtyController.text),
+                    'supplier': purposeController.text.trim(),
+                    'purchase_date': retrievalDateController.text,
+                    'created_by': _supabase.auth.currentUser!.id,
+                  });
+                  if (mounted) {
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Stok keluar berhasil dicatat!'),
+                        backgroundColor: Colors.green));
+                    _refreshData();
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    _showErrorSnackBar('Gagal menyimpan: $e');
+                  }
+                }
+              }
+            },
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =================================================================
+  // FUNGSI DIALOG BARU UNTUK PENGHITUNGAN ULANG STOK (RECOUNT)
+  // =================================================================
+  Future<void> _showStockRecountDialog() async {
+    if (_currentSummaries.isEmpty) {
+      _showErrorSnackBar("Data sparepart belum termuat. Silakan coba lagi.");
+      return;
+    }
+
+    final formKey = GlobalKey<FormState>();
+    int? selectedSparepartId;
+    final newQtyController = TextEditingController();
+    final recountDateController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hitung Ulang Stok Manual'),
+        content: Form(
+          key: formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<int>(
+                  hint: const Text('Pilih Sparepart'),
+                  isExpanded: true,
+                  items: _currentSummaries.map((sparepart) {
+                    return DropdownMenuItem<int>(
+                      value: sparepart.id,
+                      child: Text(sparepart.sparepartName),
+                    );
+                  }).toList(),
+                  onChanged: (value) => selectedSparepartId = value,
+                  validator: (v) => v == null ? 'Sparepart harus dipilih' : null,
+                ),
+                TextFormField(
+                  controller: newQtyController,
+                  decoration: const InputDecoration(labelText: 'Jumlah Stok Baru (Fisik)'),
+                  keyboardType: TextInputType.number,
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Wajib diisi';
+                    if (int.tryParse(v) == null) return 'Jumlah tidak valid';
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: recountDateController,
+                  decoration: const InputDecoration(labelText: 'Tanggal Penghitungan', hintText: 'YYYY-MM-DD'),
+                  readOnly: true,
+                  onTap: () async {
+                    DateTime? pickedDate = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2101));
+                    if (pickedDate != null) {
+                      recountDateController.text = DateFormat('yyyy-MM-dd').format(pickedDate);
+                    }
+                  },
+                  validator: (v) => v!.isEmpty ? 'Tanggal wajib diisi' : null,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                try {
+                  await _supabase.from('stock_transactions').insert({
+                    'sparepart_id': selectedSparepartId!,
+                    'transaction_type': 'RECOUNT',
+                    'quantity': int.parse(newQtyController.text),
+                    'purchase_date': recountDateController.text,
+                    'created_by': _supabase.auth.currentUser!.id,
+                  });
+                  if (mounted) {
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Penghitungan ulang stok berhasil dicatat!'),
+                        backgroundColor: Colors.green));
+                    _refreshData();
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    _showErrorSnackBar('Gagal menyimpan: $e');
+                  }
+                }
+              }
+            },
+            child: const Text('Simpan Hasil Hitung'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _navigateToDetail(SparepartSummary item) {
     Navigator.push(
       context,
@@ -288,14 +513,42 @@ class _WarehousePageState extends State<WarehousePage> {
         actions: <Widget>[
           IconButton(icon: const Icon(Icons.refresh), tooltip: 'Refresh Data', onPressed: _refreshData),
           if (canManage)
-            IconButton(icon: const Icon(Icons.add_box_outlined), tooltip: 'Tambah Jenis Sparepart Baru', onPressed: () => _showSparepartMasterDialog()),
-          if (canManage)
-            IconButton(icon: const Icon(Icons.add_shopping_cart), tooltip: 'Catat Stok Masuk', onPressed: _showAddStockInDialog),
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'add_master') {
+                  _showSparepartMasterDialog();
+                } else if (value == 'stock_in') {
+                  _showAddStockInDialog();
+                } else if (value == 'stock_out') {
+                  _showAddStockOutDialog();
+                } else if (value == 'recount') {
+                  _showStockRecountDialog();
+                }
+              },
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                const PopupMenuItem<String>(
+                  value: 'add_master',
+                  child: ListTile(leading: Icon(Icons.add_box_outlined), title: Text('Tambah Jenis Sparepart')),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'stock_in',
+                  child: ListTile(leading: Icon(Icons.add_shopping_cart), title: Text('Catat Stok Masuk')),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'stock_out',
+                  child: ListTile(leading: Icon(Icons.remove_shopping_cart), title: Text('Catat Stok Keluar')),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'recount',
+                  child: ListTile(leading: Icon(Icons.inventory_2_outlined), title: Text('Hitung Ulang Stok')),
+                ),
+              ],
+            ),
         ],
       ),
       drawer: const AppDrawer(),
       body: RefreshIndicator(
-        onRefresh: _fetchSparepartsSummary,
+        onRefresh: _fetchAndReturnSparepartsSummary,
         child: FutureBuilder<List<SparepartSummary>>(
           future: _sparepartsFuture,
           builder: (context, snapshot) {
@@ -343,9 +596,6 @@ class _WarehousePageState extends State<WarehousePage> {
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           ),
                         ),
-                        // =================================================================
-                        // KOLOM AKSI DENGAN TOMBOL VIEW, EDIT, DAN DELETE
-                        // =================================================================
                         DataCell(
                             Row(
                               children: [

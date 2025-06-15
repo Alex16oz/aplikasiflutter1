@@ -51,7 +51,6 @@ class _SparepartDetailPageState extends State<SparepartDetailPage> {
       ),
       body: Column(
         children: [
-          // CARD UNTUK TOTAL STOK
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Card(
@@ -68,10 +67,6 @@ class _SparepartDetailPageState extends State<SparepartDetailPage> {
               ),
             ),
           ),
-
-          // =================================================================
-          // CARD BARU UNTUK MENAMPILKAN DESKRIPSI
-          // =================================================================
           if (widget.sparepartSummary.description != null &&
               widget.sparepartSummary.description!.isNotEmpty)
             Padding(
@@ -86,7 +81,6 @@ class _SparepartDetailPageState extends State<SparepartDetailPage> {
                 ),
               ),
             ),
-
           const Divider(height: 24),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16.0),
@@ -113,38 +107,76 @@ class _SparepartDetailPageState extends State<SparepartDetailPage> {
                   itemCount: transactions.length,
                   itemBuilder: (context, index) {
                     final tx = transactions[index];
-                    final isStockIn = tx.transactionType == 'IN';
-                    return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 4),
-                      child: ListTile(
-                        leading: Icon(
-                          isStockIn ? Icons.arrow_downward : Icons.arrow_upward,
-                          color: isStockIn ? Colors.green : Colors.red,
-                        ),
-                        title: Text(isStockIn
-                            ? 'Stok Masuk dari ${tx.supplier ?? "N/A"}'
-                            : 'Stok Keluar'),
-                        subtitle: Text(
-                            DateFormat('dd MMM yyyy, HH:mm').format(tx.transactionDate.toLocal())),
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              '${isStockIn ? "+" : "-"} ${tx.quantity}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: isStockIn ? Colors.green : Colors.red,
+
+                    // ==========================================================
+                    // ==== AWAL DARI BLOK LOGIKA YANG DIPERBARUI ====
+                    // ==========================================================
+                    if (tx.transactionType == 'RECOUNT') {
+                      // Tampilan khusus untuk transaksi RECOUNT
+                      return Card(
+                        color: Colors.blue.shade50,
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: ListTile(
+                          leading: Icon(Icons.inventory_2_outlined, color: Colors.blue.shade800),
+                          title: const Text('Hitung Ulang Stok (Recount)'),
+                          subtitle: Text(DateFormat('dd MMM yyyy, HH:mm').format(tx.transactionDate.toLocal())),
+                          trailing: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              const Text('Jumlah Baru', style: TextStyle(fontSize: 12)),
+                              Text(
+                                tx.quantity.toString(),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: Colors.blue.shade800,
+                                ),
                               ),
-                            ),
-                            if (isStockIn && tx.unitPrice != null)
-                              Text(NumberFormat.currency(
-                                  locale: 'id_ID', symbol: 'Rp ')
-                                  .format(tx.unitPrice)),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    );
+                      );
+                    } else {
+                      // Tampilan untuk transaksi IN dan OUT (logika yang sudah ada)
+                      final isStockIn = tx.transactionType == 'IN';
+                      final purposeOrSupplier = tx.supplier;
+
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: ListTile(
+                          leading: Icon(
+                            isStockIn ? Icons.arrow_downward : Icons.arrow_upward,
+                            color: isStockIn ? Colors.green : Colors.red,
+                          ),
+                          title: Text(isStockIn
+                              ? 'Stok Masuk dari ${purposeOrSupplier ?? "N/A"}'
+                              : 'Stok Keluar untuk ${purposeOrSupplier ?? "N/A"}'
+                          ),
+                          subtitle: Text(DateFormat('dd MMM yyyy, HH:mm').format(tx.transactionDate.toLocal())),
+                          trailing: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                '${isStockIn ? "+" : "-"} ${tx.quantity}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: isStockIn ? Colors.green : Colors.red,
+                                ),
+                              ),
+                              if (isStockIn && tx.unitPrice != null)
+                                Text(NumberFormat.currency(
+                                    locale: 'id_ID', symbol: 'Rp ')
+                                    .format(tx.unitPrice)),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+                    // ==========================================================
+                    // ==== AKHIR DARI BLOK LOGIKA YANG DIPERBARUI ====
+                    // ==========================================================
                   },
                 );
               },
