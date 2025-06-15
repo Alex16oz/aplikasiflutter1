@@ -23,8 +23,51 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLogin = true; // To toggle between Login and Sign Up views
   bool _passwordVisible = false; // To toggle password visibility
 
+  //===[PERUBAHAN 1: Menambahkan state untuk checkbox "Remember Me"]===
+  bool _rememberMe = true;
+
   final _supabase = Supabase.instance.client;
 
+  //===[PERUBAHAN 2: Menambahkan pengecekan sesi saat halaman dimuat]===
+  @override
+  void initState() {
+    super.initState();
+    _redirectOnSession();
+  }
+
+  /// Checks for an active session and redirects to the dashboard if found.
+  Future<void> _redirectOnSession() async {
+    // Memberi sedikit jeda untuk memastikan widget sudah siap
+    await Future.delayed(Duration.zero);
+
+    if (!mounted) return;
+
+    try {
+      final session = _supabase.auth.currentSession;
+      if (session != null) {
+        // Jika sesi ditemukan, ambil data profil pengguna
+        final profileResponse = await _supabase
+            .from('profiles')
+            .select()
+            .eq('id', session.user.id)
+            .single();
+
+        // Alihkan ke halaman dashboard dengan membawa data pengguna
+        Navigator.pushReplacementNamed(
+          context,
+          DashboardPage.routeName,
+          arguments: {
+            ...profileResponse,
+            'email': session.user.email,
+          },
+        );
+      }
+    } catch (e) {
+      // Jika terjadi error (misal: profil tidak ditemukan), biarkan pengguna di halaman login.
+    }
+  }
+
+  // ... (kode lainnya seperti _handleAuth, _forgotPassword, dispose tetap sama) ...
   Future<void> _handleAuth() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -156,6 +199,7 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -168,6 +212,7 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
+                // ... (Icon dan Teks Judul)
                 Icon(
                   Icons.lock_outline,
                   size: 80,
@@ -265,17 +310,36 @@ class _LoginPageState extends State<LoginPage> {
                   onFieldSubmitted: (_) => _handleAuth(),
                   textInputAction: TextInputAction.done,
                 ),
+
+                //===[PERUBAHAN 3: Menambahkan widget Checkbox dan Tombol Lupa Password dalam satu baris]===
                 if (_isLogin)
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: _forgotPassword,
-                      child: Text(
-                        'Forgot Password?',
-                        style: TextStyle(color: Theme.of(context).primaryColor),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: CheckboxListTile(
+                          value: _rememberMe,
+                          onChanged: (bool? value) {
+                            setState(() {
+                              if (value != null) _rememberMe = value;
+                            });
+                          },
+                          title: const Text('Remember Me'),
+                          controlAffinity: ListTileControlAffinity.leading,
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                        ),
                       ),
-                    ),
+                      TextButton(
+                        onPressed: _forgotPassword,
+                        child: Text(
+                          'Forgot Password?',
+                          style: TextStyle(color: Theme.of(context).primaryColor),
+                        ),
+                      ),
+                    ],
                   ),
+
                 const SizedBox(height: 20.0),
                 _isLoading
                     ? const Center(child: CircularProgressIndicator())

@@ -1,6 +1,8 @@
 // lib/widgets/app_drawer.dart
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // Import Supabase
 import '../pages/login_page.dart';
+// ... (import halaman lainnya)
 import '../pages/dashboard_page.dart';
 import '../pages/user_profile_page.dart';
 import '../pages/attendance_page.dart';
@@ -13,6 +15,7 @@ import '../pages/damage_reports_page.dart';
 import '../pages/attendance_reports_page.dart';
 import '../pages/settings_page.dart';
 import '../pages/about_page.dart';
+
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -33,6 +36,7 @@ class AppDrawer extends StatelessWidget {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     final String? currentRouteName = ModalRoute.of(context)?.settings.name;
@@ -40,7 +44,6 @@ class AppDrawer extends StatelessWidget {
 
     final String username = user?['username'] ?? 'Guest';
     final String email = user?['email'] ?? 'guest@example.com';
-
 
     return Drawer(
       child: ListView(
@@ -72,6 +75,7 @@ class AppDrawer extends StatelessWidget {
               color: Color(0xFF1976D2),
             ),
           ),
+          // ... (semua ListTile lainnya tetap sama) ...
           ListTile(
             leading: const Icon(Icons.dashboard),
             title: const Text('Dashboard'),
@@ -173,11 +177,14 @@ class AppDrawer extends StatelessWidget {
               _navigateToPage(context, AboutPage.routeName, replace: true, arguments: user);
             },
           ),
+
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout),
             title: const Text('Logout'),
-            onTap: () {
+            //===[PERUBAHAN: Menambahkan sign out dan mengubah onTap menjadi async]==
+            onTap: () async {
+              await Supabase.instance.client.auth.signOut();
               _navigateToPage(context, LoginPage.routeName, replace: true);
             },
           ),
