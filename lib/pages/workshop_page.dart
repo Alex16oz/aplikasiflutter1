@@ -320,6 +320,7 @@ class _WorkshopPageState extends State<WorkshopPage> {
                   const DataColumn(label: Text('Serial Number', style: TextStyle(fontWeight: FontWeight.bold))),
                   const DataColumn(label: Text('Machine Name', style: TextStyle(fontWeight: FontWeight.bold))),
                   const DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
+                  const DataColumn(label: Text('Purchase Date', style: TextStyle(fontWeight: FontWeight.bold))),
                   const DataColumn(label: Text('Last Maintenance', style: TextStyle(fontWeight: FontWeight.bold))),
                   const DataColumn(label: Text('Action', style: TextStyle(fontWeight: FontWeight.bold))),
                 ],
@@ -335,6 +336,7 @@ class _WorkshopPageState extends State<WorkshopPage> {
                           child: Text(item['operational_status'] ?? 'N/A', style: const TextStyle(color: Colors.white, fontSize: 12)),
                         ),
                       ),
+                      DataCell(Text(_formatDate(item['purchase_date']))),
                       DataCell(Text(_formatDate(item['last_maintenance_date']))),
                       DataCell(Row(
                         mainAxisSize: MainAxisSize.min,
