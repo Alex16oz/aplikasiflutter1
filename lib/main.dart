@@ -1,9 +1,11 @@
 // lib/main.dart
+
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// Import all page files for route definitions
-import 'pages/login_page.dart'; // <-- IMPORT NEW LOGIN PAGE
+// Import semua halaman yang dibutuhkan
+import 'pages/login_page.dart';
 import 'pages/dashboard_page.dart';
 import 'pages/user_profile_page.dart';
 import 'pages/attendance_page.dart';
@@ -16,46 +18,54 @@ import 'pages/damage_reports_page.dart';
 import 'pages/attendance_reports_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/about_page.dart';
+import 'pages/user_attendance_history_page.dart';
 
-
-
+// Fungsi utama yang dijalankan pertama kali
 Future<void> main() async {
+  // Memastikan semua komponen Flutter siap sebelum aplikasi berjalan
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Menginisialisasi data format tanggal untuk Bahasa Indonesia ('id_ID')
+  // Ini adalah kunci untuk memperbaiki error LocaleDataException
+  await initializeDateFormatting('id_ID', null);
+
+  // Menginisialisasi koneksi ke Supabase
   await Supabase.initialize(
     url: 'https://sgnavqdkkglhesglhrdi.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNnbmF2cWRra2dsaGVzZ2xocmRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0ODcyMzEsImV4cCI6MjA2NDA2MzIzMX0.nRQXlWwf-9CRjQVsff45aShM1_-WAqY1DZ0ND8r_i04',
   );
-  runApp(MyApp());
+
+  // Menjalankan aplikasi
+  runApp(const MyApp());
 }
 
+// Widget utama aplikasi
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter App Demo',
+      title: 'Aplikasi Manajemen Workshop',
       theme: ThemeData(
-        primaryColor: const Color(0xFF1EF1C9), // Your theme color
-        appBarTheme: const AppBarTheme( // Consistent AppBar styling
+        primaryColor: const Color(0xFF1EF1C9),
+        appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFF1EF1C9),
-          foregroundColor: Colors.black, // Color for title text and icons in AppBar
+          foregroundColor: Colors.black,
           elevation: 8.0,
           centerTitle: true,
           titleTextStyle: TextStyle(
-            color: Colors.black, // Explicitly set title text color
+            color: Colors.black,
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
         ),
-        // If you want to use Material 3 features and theming:
-        // colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1EF1C9)),
-        // useMaterial3: true,
       ),
-      // Define the initial route
-      initialRoute: LoginPage.routeName, // <-- SET LOGIN PAGE AS INITIAL
-      // Define all named routes
+      // Halaman pertama yang dibuka saat aplikasi dijalankan
+      initialRoute: LoginPage.routeName,
+      // Daftar semua halaman yang bisa diakses melalui navigasi nama
       routes: {
-        LoginPage.routeName: (context) => const LoginPage(), // <-- ADD LOGIN ROUTE
+        LoginPage.routeName: (context) => const LoginPage(),
         DashboardPage.routeName: (context) => const DashboardPage(),
         UserProfilePage.routeName: (context) => const UserProfilePage(),
         AttendancePage.routeName: (context) => const AttendancePage(),
@@ -68,8 +78,10 @@ class MyApp extends StatelessWidget {
         AttendanceReportsPage.routeName: (context) => const AttendanceReportsPage(),
         SettingsPage.routeName: (context) => const SettingsPage(),
         AboutPage.routeName: (context) => const AboutPage(),
+        UserAttendanceHistoryPage.routeName: (context) => const UserAttendanceHistoryPage(),
       },
-      debugShowCheckedModeBanner: false, // Optional: removes the debug banner
+      // Menghilangkan banner debug di pojok kanan atas
+      debugShowCheckedModeBanner: false,
     );
   }
 }
