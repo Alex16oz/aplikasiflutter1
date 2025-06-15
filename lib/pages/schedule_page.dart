@@ -1,4 +1,5 @@
-// lib/pages/schedule_page.dart -> VERSI FINAL LENGKAP
+// lib/pages/schedule_page.dart -> VERSI FINAL LENGKAP DENGAN PERBAIKAN
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -80,7 +81,6 @@ class _SchedulePageState extends State<SchedulePage> {
         content: const Text('Are you sure you want to delete this schedule?'),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          // PERBAIKAN: Menambahkan properti child yang wajib ada pada TextButton.
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -118,12 +118,17 @@ class _SchedulePageState extends State<SchedulePage> {
       int? machineIdForEditing;
 
       if (isEditing) {
-        // PERBAIKAN: Menghapus operator '!' yang tidak perlu karena 'isEditing' sudah memastikan schedule tidak null.
         final assignedOperatorsData = await _supabase.from('schedule_operators').select('operator_id').eq('schedule_id', schedule['schedule_id']);
         selectedOperatorIds = (assignedOperatorsData as List).map((row) => row['operator_id']).whereType<String>().toSet();
 
         final machineName = schedule['machine_name'];
-        final machine = (machinesData as List).firstWhere((m) => m['machine_name'] == machineName, orElse: () => null);
+
+        // ===============================================
+        // == PERBAIKAN DARI KODE YANG MENYEBABKAN ERROR ==
+        // ===============================================
+        final machineIterable = (machinesData as List).where((m) => m['machine_name'] == machineName);
+        final machine = machineIterable.isNotEmpty ? machineIterable.first : null;
+
         machineIdForEditing = machine?['id'];
       }
 
@@ -131,9 +136,7 @@ class _SchedulePageState extends State<SchedulePage> {
 
       final formKey = GlobalKey<FormState>();
       final int? initialSelectedMachineId = isEditing ? machineIdForEditing : (damageReport?['machine_id'] as int?);
-      // PERBAIKAN: Menghapus operator '!' yang tidak perlu.
       final dateController = TextEditingController(text: isEditing ? (schedule['schedule_date'] ?? '') : '');
-      // PERBAIKAN: Menghapus operator '!' yang tidak perlu.
       final descriptionController = TextEditingController(text: isEditing ? (schedule['task_description'] ?? '') : (damageReport?['description'] ?? ''));
 
       await showDialog<bool>(
