@@ -1,4 +1,4 @@
-// lib/pages/schedule_page.dart
+// lib/pages/schedule_page.dart -> VERSI FINAL LENGKAP
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -18,6 +18,8 @@ class _SchedulePageState extends State<SchedulePage> {
   String? _currentUserRole;
   Map<String, dynamic>? _initialDamageReport;
 
+  bool _isInitialDialogShown = false;
+
   @override
   void initState() {
     super.initState();
@@ -27,16 +29,27 @@ class _SchedulePageState extends State<SchedulePage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    _currentUserRole = args?['role'] ?? (args?['user']?['role']);
-    _initialDamageReport = args?['damage_report'];
 
-    if (_initialDamageReport != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _showCreateScheduleDialog(damageReport: _initialDamageReport);
-        }
-      });
+    if (!_isInitialDialogShown) {
+      final routeArgs = ModalRoute.of(context)?.settings.arguments;
+      Map<String, dynamic>? args;
+
+      if (routeArgs is Map) {
+        args = Map<String, dynamic>.from(routeArgs);
+      }
+
+      _currentUserRole = args?['role'] ?? (args?['user']?['role']);
+      _initialDamageReport = args?['damage_report'];
+
+      if (_initialDamageReport != null) {
+        _isInitialDialogShown = true;
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _showScheduleDialog(damageReport: _initialDamageReport);
+          }
+        });
+      }
     }
   }
 
@@ -49,6 +62,9 @@ class _SchedulePageState extends State<SchedulePage> {
   Future<List<Map<String, dynamic>>> _fetchSchedules() async {
     try {
       final response = await _supabase.rpc('get_schedules_with_details');
+      if (response is! List) {
+        return [];
+      }
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error fetching schedules: $e"), backgroundColor: Colors.red));
@@ -56,33 +72,79 @@ class _SchedulePageState extends State<SchedulePage> {
     }
   }
 
-  Future<void> _showCreateScheduleDialog({Map<String, dynamic>? damageReport}) async {
-    showDialog(
+  Future<void> _deleteSchedule(int scheduleId) async {
+    final confirmed = await showDialog<bool>(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Deletion'),
+        content: const Text('Are you sure you want to delete this schedule?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          // PERBAIKAN: Menambahkan properti child yang wajib ada pada TextButton.
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
     );
 
-    try {
-      final machines = await _supabase.from('machines').select('id, machine_name');
-      final operators = await _supabase.from('profiles').select('id, username').eq('role', 'Operator');
+    if (confirmed == true) {
+      try {
+        await _supabase.from('schedules').delete().eq('id', scheduleId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Schedule deleted successfully!'), backgroundColor: Colors.green));
+          _refreshSchedules();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to delete schedule: $e'), backgroundColor: Colors.red));
+        }
+      }
+    }
+  }
 
-      if(mounted) Navigator.of(context).pop();
+  Future<void> _showScheduleDialog({Map<String, dynamic>? schedule, Map<String, dynamic>? damageReport}) async {
+    final isEditing = schedule != null;
+
+    showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator()));
+
+    try {
+      final machinesData = await _supabase.from('machines').select('id, machine_name');
+      final operatorsData = await _supabase.from('profiles').select('id, username').eq('role', 'Operator');
+
+      Set<String> selectedOperatorIds = {};
+      int? machineIdForEditing;
+
+      if (isEditing) {
+        // PERBAIKAN: Menghapus operator '!' yang tidak perlu karena 'isEditing' sudah memastikan schedule tidak null.
+        final assignedOperatorsData = await _supabase.from('schedule_operators').select('operator_id').eq('schedule_id', schedule['schedule_id']);
+        selectedOperatorIds = (assignedOperatorsData as List).map((row) => row['operator_id']).whereType<String>().toSet();
+
+        final machineName = schedule['machine_name'];
+        final machine = (machinesData as List).firstWhere((m) => m['machine_name'] == machineName, orElse: () => null);
+        machineIdForEditing = machine?['id'];
+      }
+
+      if (mounted) Navigator.of(context).pop();
 
       final formKey = GlobalKey<FormState>();
-      int? selectedMachineId = damageReport?['machine_id'] as int?;
-      final dateController = TextEditingController();
-      final descriptionController = TextEditingController(text: damageReport?['description'] as String?);
-      final Set<String> selectedOperatorIds = {};
+      final int? initialSelectedMachineId = isEditing ? machineIdForEditing : (damageReport?['machine_id'] as int?);
+      // PERBAIKAN: Menghapus operator '!' yang tidak perlu.
+      final dateController = TextEditingController(text: isEditing ? (schedule['schedule_date'] ?? '') : '');
+      // PERBAIKAN: Menghapus operator '!' yang tidak perlu.
+      final descriptionController = TextEditingController(text: isEditing ? (schedule['task_description'] ?? '') : (damageReport?['description'] ?? ''));
 
-      final result = await showDialog<bool>(
+      await showDialog<bool>(
         context: context,
         barrierDismissible: false,
         builder: (BuildContext dialogContext) {
+          int? currentMachineId = initialSelectedMachineId;
           return StatefulBuilder(
             builder: (context, setDialogState) {
               return AlertDialog(
-                title: const Text('Create New Schedule'),
+                title: Text(isEditing ? 'Edit Schedule' : 'Create New Schedule'),
                 content: Form(
                   key: formKey,
                   child: SingleChildScrollView(
@@ -91,16 +153,11 @@ class _SchedulePageState extends State<SchedulePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         DropdownButtonFormField<int>(
-                          value: selectedMachineId,
+                          value: currentMachineId,
                           hint: const Text('Select Machine'),
                           isExpanded: true,
-                          items: (machines as List).map((m) {
-                            return DropdownMenuItem<int>(
-                              value: m['id'] as int,
-                              child: Text(m['machine_name'] as String),
-                            );
-                          }).toList(),
-                          onChanged: (value) => setDialogState(() => selectedMachineId = value),
+                          items: (machinesData as List).map((m) => DropdownMenuItem<int>(value: m['id'], child: Text(m['machine_name'] ?? 'Unknown Machine'))).toList(),
+                          onChanged: (value) => setDialogState(() => currentMachineId = value),
                           validator: (v) => v == null ? 'Machine must be selected' : null,
                         ),
                         const SizedBox(height: 16),
@@ -109,7 +166,12 @@ class _SchedulePageState extends State<SchedulePage> {
                           decoration: const InputDecoration(labelText: 'Schedule Date', suffixIcon: Icon(Icons.calendar_today)),
                           readOnly: true,
                           onTap: () async {
-                            final picked = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime(2100));
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: dateController.text.isNotEmpty ? DateTime.parse(dateController.text) : DateTime.now(),
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime(2100),
+                            );
                             if (picked != null) dateController.text = DateFormat('yyyy-MM-dd').format(picked);
                           },
                           validator: (v) => v!.isEmpty ? 'Date is required' : null,
@@ -119,22 +181,15 @@ class _SchedulePageState extends State<SchedulePage> {
                         const SizedBox(height: 24),
                         const Text('Assign Operators', style: TextStyle(fontWeight: FontWeight.bold)),
                         const Divider(),
-                        Container(
+                        SizedBox(
                           height: 150,
-                          width: double.maxFinite, // Ensure container takes full width of dialog
-                          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
-                          child: ListView.builder(
-                            shrinkWrap: true,
-                            itemCount: operators.length,
-                            itemBuilder: (context, index) {
-                              final op = operators[index];
-                              final String operatorId = op['id'] as String;
-                              final String operatorName = op['username'] as String;
-                              final isSelected = selectedOperatorIds.contains(operatorId);
-
+                          width: double.maxFinite,
+                          child: ListView(
+                            children: (operatorsData as List).map((op) {
+                              final operatorId = op['id'] as String;
                               return CheckboxListTile(
-                                title: Text(operatorName),
-                                value: isSelected,
+                                title: Text(op['username'] ?? 'Unknown Operator'),
+                                value: selectedOperatorIds.contains(operatorId),
                                 onChanged: (bool? value) {
                                   setDialogState(() {
                                     if (value == true) {
@@ -145,10 +200,10 @@ class _SchedulePageState extends State<SchedulePage> {
                                   });
                                 },
                               );
-                            },
+                            }).toList(),
                           ),
                         ),
-                        if(selectedOperatorIds.isEmpty)
+                        if (selectedOperatorIds.isEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 8.0),
                             child: Text('Please select at least one operator', style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12)),
@@ -158,38 +213,44 @@ class _SchedulePageState extends State<SchedulePage> {
                   ),
                 ),
                 actions: [
-                  TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Cancel')),
+                  TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
                   ElevatedButton(
                     onPressed: () async {
                       if (formKey.currentState!.validate() && selectedOperatorIds.isNotEmpty) {
                         try {
-                          final newSchedule = await _supabase.from('schedules').insert({
-                            'machine_id': selectedMachineId!,
+                          final scheduleData = {
+                            'machine_id': currentMachineId!,
                             'schedule_date': dateController.text,
                             'task_description': descriptionController.text.trim(),
-                            'created_by': _supabase.auth.currentUser!.id,
-                            'damage_report_id': damageReport?['id'],
-                            'status': 'Scheduled',
-                          }).select().single();
+                          };
 
-                          final newScheduleId = newSchedule['id'];
-
-                          final operatorRecords = selectedOperatorIds.map((opId) => {'schedule_id': newScheduleId, 'operator_id': opId}).toList();
-                          await _supabase.from('schedule_operators').insert(operatorRecords);
-
-                          if(damageReport != null) {
-                            await _supabase.from('damage_reports').update({'status': 'Scheduled'}).eq('id', damageReport['id']);
+                          if (isEditing) {
+                            await _supabase.from('schedules').update(scheduleData).eq('id', schedule['schedule_id']);
+                            await _supabase.from('schedule_operators').delete().eq('schedule_id', schedule['schedule_id']);
+                            final operatorRecords = selectedOperatorIds.map((opId) => {'schedule_id': schedule['schedule_id'], 'operator_id': opId}).toList();
+                            await _supabase.from('schedule_operators').insert(operatorRecords);
+                          } else {
+                            final newSchedule = await _supabase.from('schedules').insert({
+                              ...scheduleData,
+                              'created_by': _supabase.auth.currentUser!.id,
+                              'damage_report_id': damageReport?['id'],
+                            }).select().single();
+                            final newScheduleId = newSchedule['id'];
+                            final operatorRecords = selectedOperatorIds.map((opId) => {'schedule_id': newScheduleId, 'operator_id': opId}).toList();
+                            await _supabase.from('schedule_operators').insert(operatorRecords);
+                            if (damageReport != null) {
+                              await _supabase.from('damage_reports').update({'status': 'Scheduled'}).eq('id', damageReport['id']);
+                            }
                           }
 
-                          if(mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Schedule created successfully!'), backgroundColor: Colors.green));
-                            Navigator.of(dialogContext).pop(true);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Schedule ${isEditing ? 'updated' : 'created'} successfully!'), backgroundColor: Colors.green));
+                            Navigator.of(dialogContext).pop();
                             _refreshSchedules();
                           }
-
                         } catch (e) {
-                          if(mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to create schedule: $e'), backgroundColor: Colors.red));
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to save schedule: $e'), backgroundColor: Colors.red));
                           }
                         }
                       }
@@ -202,15 +263,10 @@ class _SchedulePageState extends State<SchedulePage> {
           );
         },
       );
-      if (damageReport != null && mounted) {
-        Navigator.of(context).pop(result);
-      }
     } catch (e) {
       if (mounted) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Error preparing form: $e"), backgroundColor: Colors.red)
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error preparing form: $e"), backgroundColor: Colors.red));
       }
     }
   }
@@ -229,7 +285,7 @@ class _SchedulePageState extends State<SchedulePage> {
             IconButton(
               icon: const Icon(Icons.add_task),
               tooltip: 'Create New Schedule',
-              onPressed: _showCreateScheduleDialog,
+              onPressed: () => _showScheduleDialog(),
             ),
         ],
       ),
@@ -242,43 +298,21 @@ class _SchedulePageState extends State<SchedulePage> {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
-
-            // --- PERBAIKAN UTAMA DI SINI ---
-            // Menggunakan pendekatan yang lebih sederhana untuk kondisi error dan data kosong
             if (snapshot.hasError) {
-              return ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(48.0),
-                    alignment: Alignment.center,
-                    child: Text('Error: ${snapshot.error}'),
-                  )
-                ],
-              );
+              return Center(child: Text('Error: ${snapshot.error}'));
             }
-
             if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  Container(
-                    height: MediaQuery.of(context).size.height * 0.7,
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text('No schedules found.'),
-                          const SizedBox(height: 16),
-                          ElevatedButton(onPressed: _refreshSchedules, child: const Text('Refresh')),
-                        ],
-                      ),
-                    ),
-                  )
-                ],
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('No schedules found.'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(onPressed: _refreshSchedules, child: const Text('Refresh')),
+                  ],
+                ),
               );
             }
-            // --- AKHIR PERBAIKAN ---
 
             final schedules = snapshot.data!;
             return SingleChildScrollView(
@@ -300,7 +334,7 @@ class _SchedulePageState extends State<SchedulePage> {
                     final operatorNames = List<String>.from(schedule['operator_names'] ?? []);
                     return DataRow(
                       cells: <DataCell>[
-                        DataCell(Text(DateFormat('dd MMM yy').format(DateTime.parse(schedule['schedule_date'])))),
+                        DataCell(Text( (schedule['schedule_date'] != null) ? DateFormat('dd MMM yy').format(DateTime.parse(schedule['schedule_date'])) : 'N/A')),
                         DataCell(Text(schedule['machine_name'] ?? 'N/A')),
                         DataCell(Text(operatorNames.isNotEmpty ? operatorNames.join(', ') : 'Not Assigned')),
                         DataCell(
@@ -311,8 +345,16 @@ class _SchedulePageState extends State<SchedulePage> {
                         DataCell(Row(
                           children: [
                             if(isAdmin) ...[
-                              IconButton(icon: Icon(Icons.edit, size: 20, color: Colors.blue.shade700), onPressed: () {}),
-                              IconButton(icon: Icon(Icons.delete, size: 20, color: Colors.red.shade700), onPressed: () {}),
+                              IconButton(
+                                icon: Icon(Icons.edit, size: 20, color: Colors.blue.shade700),
+                                tooltip: 'Edit Schedule',
+                                onPressed: () => _showScheduleDialog(schedule: schedule),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.delete, size: 20, color: Colors.red.shade700),
+                                tooltip: 'Delete Schedule',
+                                onPressed: () => _deleteSchedule(schedule['schedule_id']),
+                              ),
                             ]
                           ],
                         )),
