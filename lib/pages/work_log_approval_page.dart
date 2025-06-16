@@ -1,4 +1,4 @@
-// lib/pages/work_log_approval_page.dart (KODE LENGKAP DIPERBAIKI)
+// lib/pages/work_log_approval_page.dart
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -29,14 +29,13 @@ class _WorkLogApprovalPageState extends State<WorkLogApprovalPage> {
     });
   }
 
-  // ==[PERBAIKAN UTAMA ADA DI FUNGSI INI]==
   Future<List<Map<String, dynamic>>> _fetchApprovals() async {
     try {
       final response = await _supabase
           .from('work_logs')
           .select(
           '*, '
-              'operator:profiles!work_logs_user_id_fkey(username), ' // Menggunakan alias 'operator' untuk relasi user_id
+              'operator:profiles!work_logs_user_id_fkey(username), '
               'schedules(task_description, machines(machine_name))'
       )
           .eq('status', 'Menunggu Persetujuan')
@@ -52,17 +51,16 @@ class _WorkLogApprovalPageState extends State<WorkLogApprovalPage> {
       return [];
     }
   }
-  // ==[AKHIR DARI BLOK PERBAIKAN]==
 
-  Future<void> _updateStatus(int workLogId, String newStatus, String action) async {
+  Future<void> _approveWorkLog(int workLogId) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Konfirmasi $action'),
-        content: Text('Anda yakin ingin $action catatan kerja ini?'),
+        title: const Text('Konfirmasi Persetujuan'),
+        content: const Text('Anda yakin ingin menyetujui catatan kerja ini?'),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Batal')),
-          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: Text(action)),
+          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Setujui')),
         ],
       ),
     ) ?? false;
@@ -70,15 +68,16 @@ class _WorkLogApprovalPageState extends State<WorkLogApprovalPage> {
     if (confirmed) {
       try {
         await _supabase.from('work_logs').update({
-          'status': newStatus,
+          'status': 'Disetujui',
           'approved_by': _supabase.auth.currentUser!.id,
         }).eq('id', workLogId);
 
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Catatan kerja berhasil di-$action.'),
-          backgroundColor: Colors.green,
-        ));
-
+        if(mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Catatan kerja berhasil disetujui.'),
+            backgroundColor: Colors.green,
+          ));
+        }
         _refreshApprovals();
 
       } catch (e) {
@@ -91,6 +90,72 @@ class _WorkLogApprovalPageState extends State<WorkLogApprovalPage> {
       }
     }
   }
+
+  Future<void> _rejectWorkLog(int workLogId) async {
+    final reasonController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Alasan Penolakan'),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: reasonController,
+            decoration: const InputDecoration(
+              labelText: 'Alasan Penolakan',
+              hintText: 'Contoh: Foto tidak jelas, jam kerja tidak sesuai.',
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Alasan penolakan wajib diisi.';
+              }
+              return null;
+            },
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.of(context).pop(true);
+              }
+            },
+            child: const Text('Tolak Laporan'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _supabase.from('work_logs').update({
+          'status': 'Ditolak',
+          'rejection_reason': reasonController.text.trim(), // Simpan alasan
+          'approved_by': _supabase.auth.currentUser!.id,
+        }).eq('id', workLogId);
+
+        if(mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Laporan kerja berhasil ditolak.'),
+            backgroundColor: Colors.orange,
+          ));
+        }
+        _refreshApprovals();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Gagal menolak laporan: $e'),
+            backgroundColor: Colors.red,
+          ));
+        }
+      }
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -125,10 +190,8 @@ class _WorkLogApprovalPageState extends State<WorkLogApprovalPage> {
             itemCount: logs.length,
             itemBuilder: (context, index) {
               final log = logs[index];
-              // ==[PERBAIKAN CARA MENGAKSES DATA]==
               final operatorProfile = log['operator'];
               final schedule = log['schedules'];
-              // ===================================
               final machine = schedule?['machines'];
               final duration = log['duration_minutes'] ?? 0;
               final overtime = log['overtime_minutes'] ?? 0;
@@ -142,9 +205,7 @@ class _WorkLogApprovalPageState extends State<WorkLogApprovalPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        // ==[PERBAIKAN CARA MENGAKSES DATA]==
                         'Operator: ${operatorProfile?['username'] ?? 'N/A'}',
-                        // ===================================
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                       const Divider(),
@@ -167,14 +228,14 @@ class _WorkLogApprovalPageState extends State<WorkLogApprovalPage> {
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           OutlinedButton.icon(
-                            onPressed: () => _updateStatus(log['id'], 'Ditolak', 'Tolak'),
+                            onPressed: () => _rejectWorkLog(log['id']),
                             icon: const Icon(Icons.close),
                             label: const Text('Tolak'),
                             style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
                           ),
                           const SizedBox(width: 8),
                           ElevatedButton.icon(
-                            onPressed: () => _updateStatus(log['id'], 'Disetujui', 'Setujui'),
+                            onPressed: () => _approveWorkLog(log['id']),
                             icon: const Icon(Icons.check),
                             label: const Text('Setujui'),
                             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),

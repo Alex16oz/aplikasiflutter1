@@ -1,4 +1,4 @@
-// lib/pages/my_tasks_page.dart (KODE LENGKAP FINAL)
+// lib/pages/my_tasks_page.dart
 
 import 'dart:async';
 import 'dart:io';
@@ -53,15 +53,30 @@ class _MyTasksPageState extends State<MyTasksPage> {
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
-        return _CreateReportDialog(
+        return _CreateOrEditReportDialog(
           scheduleId: scheduleId,
-          onReportSubmitted: () {
-            _refreshTasks();
-          },
+          onReportSubmitted: _refreshTasks,
         );
       },
     );
   }
+
+  // == PERBAIKAN: Fungsi ini sekarang menerima scheduleId secara eksplisit ==
+  Future<void> _showEditReportDialog(int scheduleId, Map<String, dynamic> workLog) async {
+    await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext dialogContext) {
+          return _CreateOrEditReportDialog(
+            // == PERBAIKAN: Menggunakan scheduleId yang diteruskan ==
+            scheduleId: scheduleId,
+            existingWorkLog: workLog,
+            onReportSubmitted: _refreshTasks,
+          );
+        }
+    );
+  }
+
 
   Future<void> _startWork(int scheduleId) async {
     try {
@@ -229,6 +244,7 @@ class _MyTasksPageState extends State<MyTasksPage> {
                 return Card(
                   elevation: 3,
                   margin: const EdgeInsets.symmetric(vertical: 6),
+                  color: status == 'Ditolak' ? Colors.red.shade50 : null,
                   child: Padding(
                     padding: const EdgeInsets.all(12.0),
                     child: Column(
@@ -243,6 +259,14 @@ class _MyTasksPageState extends State<MyTasksPage> {
                         Text('Tugas: ${task['task_description']}'),
                         Text(
                             'Jadwal: ${DateFormat('dd MMM yy').format(DateTime.parse(task['schedule_date']))}'),
+                        if (status == 'Ditolak' && workLog?['rejection_reason'] != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              'Alasan Penolakan: ${workLog!['rejection_reason']}',
+                              style: TextStyle(color: Colors.red.shade800, fontStyle: FontStyle.italic),
+                            ),
+                          ),
                         const SizedBox(height: 12),
                         _buildTaskActions(status, scheduleId, workLog),
                       ],
@@ -297,9 +321,16 @@ class _MyTasksPageState extends State<MyTasksPage> {
             label: Text('Laporan Telah Dibuat'),
             backgroundColor: Colors.tealAccent);
       case 'Ditolak':
-        return const Chip(
-            label: Text('Pekerjaan Ditolak'),
-            backgroundColor: Colors.redAccent);
+        return Align(
+          alignment: Alignment.centerRight,
+          child: ElevatedButton.icon(
+            // == PERBAIKAN: Mengirim scheduleId dari `task` ke fungsi edit ==
+            onPressed: () => _showEditReportDialog(scheduleId, workLog!),
+            icon: const Icon(Icons.edit_note),
+            label: const Text('Edit & Kirim Ulang'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+          ),
+        );
       default: // 'Belum Dikerjakan'
         return Align(
           alignment: Alignment.centerRight,
@@ -314,22 +345,38 @@ class _MyTasksPageState extends State<MyTasksPage> {
   }
 }
 
-// Dialog untuk membuat laporan
-class _CreateReportDialog extends StatefulWidget {
+// Dialog untuk membuat atau mengedit laporan
+class _CreateOrEditReportDialog extends StatefulWidget {
   final int scheduleId;
+  final Map<String, dynamic>? existingWorkLog;
   final VoidCallback onReportSubmitted;
 
-  const _CreateReportDialog({required this.scheduleId, required this.onReportSubmitted});
+  const _CreateOrEditReportDialog({
+    required this.scheduleId,
+    this.existingWorkLog,
+    required this.onReportSubmitted
+  });
 
   @override
-  State<_CreateReportDialog> createState() => _CreateReportDialogState();
+  State<_CreateOrEditReportDialog> createState() => _CreateOrEditReportDialogState();
 }
 
-class _CreateReportDialogState extends State<_CreateReportDialog> {
+class _CreateOrEditReportDialogState extends State<_CreateOrEditReportDialog> {
   final _notesController = TextEditingController();
   final List<XFile> _images = [];
   final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
+  bool get _isEditing => widget.existingWorkLog != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isEditing) {
+      // Jika sedang mengedit, isi catatan dari data yang ada
+      _notesController.text = widget.existingWorkLog?['notes'] ?? '';
+      // Di aplikasi nyata, Anda juga perlu memuat ulang gambar yang ada
+    }
+  }
 
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 60);
@@ -350,11 +397,11 @@ class _CreateReportDialogState extends State<_CreateReportDialog> {
       final userId = Supabase.instance.client.auth.currentUser!.id;
       final List<String> photoUrls = [];
 
+      // Upload gambar baru
       for (final image in _images) {
         final imageExtension = image.path.split('.').last.toLowerCase();
         final imageBytes = await image.readAsBytes();
-        final imagePath =
-            '/${userId}/${DateTime.now().millisecondsSinceEpoch}.$imageExtension';
+        final imagePath = '/$userId/${DateTime.now().millisecondsSinceEpoch}.$imageExtension';
 
         await Supabase.instance.client.storage
             .from('repair_photos')
@@ -370,27 +417,39 @@ class _CreateReportDialogState extends State<_CreateReportDialog> {
         photoUrls.add(url);
       }
 
-      await Supabase.instance.client.from('repair_reports').insert({
-        'schedule_id': widget.scheduleId,
-        'completed_by': userId,
-        'completion_notes': _notesController.text,
-        'photo_urls': photoUrls,
-      });
+      if (_isEditing) {
+        // --- LOGIKA EDIT ---
+        await Supabase.instance.client.from('work_logs').update({
+          'status': 'Menunggu Persetujuan',
+          'notes': _notesController.text,
+          'rejection_reason': null, // Hapus alasan penolakan
+          // Tambahkan logika untuk update foto jika diperlukan
+        }).eq('id', widget.existingWorkLog!['id']);
+      } else {
+        // --- LOGIKA BUAT LAPORAN BARU ---
+        await Supabase.instance.client.from('repair_reports').insert({
+          'schedule_id': widget.scheduleId,
+          'completed_by': userId,
+          'completion_notes': _notesController.text,
+          'photo_urls': photoUrls,
+        });
 
-      await Supabase.instance.client
-          .from('schedules')
-          .update({'status': 'Selesai'})
-          .eq('id', widget.scheduleId);
+        await Supabase.instance.client
+            .from('schedules')
+            .update({'status': 'Selesai'})
+            .eq('id', widget.scheduleId);
 
-      await Supabase.instance.client
-          .from('work_logs')
-          .update({'status': 'Laporan Dibuat'})
-          .eq('schedule_id', widget.scheduleId)
-          .eq('user_id', userId);
+        await Supabase.instance.client
+            .from('work_logs')
+            .update({'status': 'Laporan Dibuat'})
+            .eq('schedule_id', widget.scheduleId)
+            .eq('user_id', userId);
+      }
+
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Laporan berhasil dikirim!'),
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Laporan berhasil ${_isEditing ? 'dikirim ulang' : 'dikirim'}!'),
           backgroundColor: Colors.green,
         ));
         Navigator.of(context).pop();
@@ -415,16 +474,16 @@ class _CreateReportDialogState extends State<_CreateReportDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Buat Laporan Perbaikan'),
+      title: Text(_isEditing ? 'Edit Laporan Kerja' : 'Buat Laporan Perbaikan'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
+            TextFormField(
               controller: _notesController,
               decoration:
-              const InputDecoration(labelText: 'Catatan Penyelesaian'),
+              const InputDecoration(labelText: 'Catatan'),
               maxLines: 3,
             ),
             const SizedBox(height: 16),
@@ -447,7 +506,6 @@ class _CreateReportDialogState extends State<_CreateReportDialog> {
                   ),
                 ),
               ),
-            // TODO: Tambahkan fungsionalitas pemilihan sparepart di sini
           ],
         ),
       ),
@@ -462,7 +520,7 @@ class _CreateReportDialogState extends State<_CreateReportDialog> {
               height: 20,
               width: 20,
               child: CircularProgressIndicator(color: Colors.white))
-              : const Text('Kirim Laporan'),
+              : Text(_isEditing ? 'Kirim Ulang' : 'Kirim Laporan'),
         )
       ],
     );
