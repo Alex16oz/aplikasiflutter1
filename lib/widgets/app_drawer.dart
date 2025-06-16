@@ -1,8 +1,7 @@
 // lib/widgets/app_drawer.dart
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'; // Import Supabase
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../pages/login_page.dart';
-// ... (import halaman lainnya)
 import '../pages/dashboard_page.dart';
 import '../pages/user_profile_page.dart';
 import '../pages/attendance_page.dart';
@@ -15,6 +14,10 @@ import '../pages/damage_reports_page.dart';
 import '../pages/attendance_reports_page.dart';
 import '../pages/settings_page.dart';
 import '../pages/about_page.dart';
+
+// Import halaman baru
+import '../pages/my_tasks_page.dart';
+import '../pages/work_log_approval_page.dart';
 
 
 class AppDrawer extends StatelessWidget {
@@ -44,6 +47,7 @@ class AppDrawer extends StatelessWidget {
 
     final String username = user?['username'] ?? 'Guest';
     final String email = user?['email'] ?? 'guest@example.com';
+    final String userRole = user?['role'] ?? '';
 
     return Drawer(
       child: ListView(
@@ -75,7 +79,6 @@ class AppDrawer extends StatelessWidget {
               color: Color(0xFF1976D2),
             ),
           ),
-          // ... (semua ListTile lainnya tetap sama) ...
           ListTile(
             leading: const Icon(Icons.dashboard),
             title: const Text('Dashboard'),
@@ -84,6 +87,33 @@ class AppDrawer extends StatelessWidget {
               _navigateToPage(context, DashboardPage.routeName, replace: true, arguments: user);
             },
           ),
+
+          // Menu kondisional untuk Operator
+          if (userRole == 'Operator') ...[
+            const _DrawerSectionHeader(title: 'PEKERJAAN'),
+            ListTile(
+              leading: const Icon(Icons.checklist_rtl),
+              title: const Text('Tugas Saya'),
+              selected: currentRouteName == MyTasksPage.routeName,
+              onTap: () {
+                _navigateToPage(context, MyTasksPage.routeName, replace: true, arguments: user);
+              },
+            ),
+          ],
+
+          // Menu kondisional untuk Admin
+          if (userRole == 'Admin') ...[
+            const _DrawerSectionHeader(title: 'MANAJEMEN PEGAWAI'),
+            ListTile(
+              leading: const Icon(Icons.approval_outlined),
+              title: const Text('Persetujuan Kerja'),
+              selected: currentRouteName == WorkLogApprovalPage.routeName,
+              onTap: () {
+                _navigateToPage(context, WorkLogApprovalPage.routeName, replace: true, arguments: user);
+              },
+            ),
+          ],
+
           const _DrawerSectionHeader(title: 'USER'),
           ListTile(
             leading: const Icon(Icons.person_outline),
@@ -182,7 +212,6 @@ class AppDrawer extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.logout),
             title: const Text('Logout'),
-            //===[PERUBAHAN: Menambahkan sign out dan mengubah onTap menjadi async]==
             onTap: () async {
               await Supabase.instance.client.auth.signOut();
               _navigateToPage(context, LoginPage.routeName, replace: true);
