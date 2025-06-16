@@ -1,8 +1,9 @@
-// lib/pages/schedule_page.dart -> VERSI FINAL LENGKAP DENGAN PERBAIKAN
+// lib/pages/schedule_page.dart (KODE LENGKAP FINAL)
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:testflut1/pages/repair_reports_page.dart';
 import '../widgets/app_drawer.dart';
 
 class SchedulePage extends StatefulWidget {
@@ -44,7 +45,6 @@ class _SchedulePageState extends State<SchedulePage> {
 
       if (_initialDamageReport != null) {
         _isInitialDialogShown = true;
-
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             _showScheduleDialog(damageReport: _initialDamageReport);
@@ -73,6 +73,7 @@ class _SchedulePageState extends State<SchedulePage> {
     }
   }
 
+  // ... (Fungsi _deleteSchedule dan _showScheduleDialog tetap sama seperti sebelumnya) ...
   Future<void> _deleteSchedule(int scheduleId) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -120,15 +121,9 @@ class _SchedulePageState extends State<SchedulePage> {
       if (isEditing) {
         final assignedOperatorsData = await _supabase.from('schedule_operators').select('operator_id').eq('schedule_id', schedule['schedule_id']);
         selectedOperatorIds = (assignedOperatorsData as List).map((row) => row['operator_id']).whereType<String>().toSet();
-
         final machineName = schedule['machine_name'];
-
-        // ===============================================
-        // == PERBAIKAN DARI KODE YANG MENYEBABKAN ERROR ==
-        // ===============================================
         final machineIterable = (machinesData as List).where((m) => m['machine_name'] == machineName);
         final machine = machineIterable.isNotEmpty ? machineIterable.first : null;
-
         machineIdForEditing = machine?['id'];
       }
 
@@ -305,18 +300,8 @@ class _SchedulePageState extends State<SchedulePage> {
               return Center(child: Text('Error: ${snapshot.error}'));
             }
             if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('No schedules found.'),
-                    const SizedBox(height: 16),
-                    ElevatedButton(onPressed: _refreshSchedules, child: const Text('Refresh')),
-                  ],
-                ),
-              );
+              return const Center(child: Text('No schedules found.'));
             }
-
             final schedules = snapshot.data!;
             return SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -335,30 +320,44 @@ class _SchedulePageState extends State<SchedulePage> {
                   ],
                   rows: schedules.map((schedule) {
                     final operatorNames = List<String>.from(schedule['operator_names'] ?? []);
+                    final scheduleStatus = schedule['status'] ?? 'Dijadwalkan';
+
                     return DataRow(
                       cells: <DataCell>[
-                        DataCell(Text( (schedule['schedule_date'] != null) ? DateFormat('dd MMM yy').format(DateTime.parse(schedule['schedule_date'])) : 'N/A')),
+                        DataCell(Text((schedule['schedule_date'] != null) ? DateFormat('dd MMM yy').format(DateTime.parse(schedule['schedule_date'])) : 'N/A')),
                         DataCell(Text(schedule['machine_name'] ?? 'N/A')),
                         DataCell(Text(operatorNames.isNotEmpty ? operatorNames.join(', ') : 'Not Assigned')),
                         DataCell(
-                            Chip(label: Text(schedule['status'] ?? 'N/A'),
-                              backgroundColor: (schedule['status'] == 'Completed') ? Colors.green.shade100 : Colors.blue.shade100,
-                            )
+                          Chip(
+                            label: Text(scheduleStatus),
+                            backgroundColor: _getStatusColor(scheduleStatus),
+                          ),
                         ),
                         DataCell(Row(
                           children: [
-                            if(isAdmin) ...[
+                            if (scheduleStatus == 'Selesai' || scheduleStatus == 'Terverifikasi')
+                              IconButton(
+                                icon: Icon(Icons.description_outlined, size: 20, color: Colors.teal.shade700),
+                                tooltip: 'Lihat Laporan Perbaikan',
+                                onPressed: () {
+                                  Navigator.push(context, MaterialPageRoute(
+                                    builder: (context) => RepairReportsPage(scheduleId: schedule['schedule_id']),
+                                  )).then((_) => _refreshSchedules());
+                                },
+                              )
+                            else if (isAdmin)
                               IconButton(
                                 icon: Icon(Icons.edit, size: 20, color: Colors.blue.shade700),
                                 tooltip: 'Edit Schedule',
                                 onPressed: () => _showScheduleDialog(schedule: schedule),
                               ),
+
+                            if (isAdmin && scheduleStatus == 'Dijadwalkan')
                               IconButton(
                                 icon: Icon(Icons.delete, size: 20, color: Colors.red.shade700),
                                 tooltip: 'Delete Schedule',
                                 onPressed: () => _deleteSchedule(schedule['schedule_id']),
                               ),
-                            ]
                           ],
                         )),
                       ],
@@ -371,5 +370,16 @@ class _SchedulePageState extends State<SchedulePage> {
         ),
       ),
     );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Selesai':
+        return Colors.lightBlue.shade100;
+      case 'Terverifikasi':
+        return Colors.green.shade100;
+      default: // Dijadwalkan
+        return Colors.orange.shade100;
+    }
   }
 }

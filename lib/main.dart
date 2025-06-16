@@ -19,6 +19,9 @@ import 'pages/attendance_reports_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/about_page.dart';
 import 'pages/user_attendance_history_page.dart';
+// Import halaman baru untuk modul kepegawaian
+import 'pages/my_tasks_page.dart';
+import 'pages/work_log_approval_page.dart';
 
 // Fungsi utama yang dijalankan pertama kali
 Future<void> main() async {
@@ -26,7 +29,6 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Menginisialisasi data format tanggal untuk Bahasa Indonesia ('id_ID')
-  // Ini adalah kunci untuk memperbaiki error LocaleDataException
   await initializeDateFormatting('id_ID', null);
 
   // Menginisialisasi koneksi ke Supabase
@@ -79,6 +81,9 @@ class MyApp extends StatelessWidget {
         SettingsPage.routeName: (context) => const SettingsPage(),
         AboutPage.routeName: (context) => const AboutPage(),
         UserAttendanceHistoryPage.routeName: (context) => const UserAttendanceHistoryPage(),
+        // Rute baru untuk modul kepegawaian
+        MyTasksPage.routeName: (context) => const MyTasksPage(),
+        WorkLogApprovalPage.routeName: (context) => const WorkLogApprovalPage(),
       },
       // Menghilangkan banner debug di pojok kanan atas
       debugShowCheckedModeBanner: false,
