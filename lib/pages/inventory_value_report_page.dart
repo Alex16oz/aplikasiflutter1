@@ -99,25 +99,32 @@ class _InventoryValueReportPageState extends State<InventoryValueReportPage> {
                     ),
                   ),
                 ),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
+                // --- PERUBAHAN UTAMA DIMULAI DI SINI ---
+                SizedBox(
+                  width: double.infinity,
                   child: DataTable(
+                    columnSpacing: 20.0,
                     columns: const [
-                      DataColumn(label: Text('Nama Sparepart')),
-                      DataColumn(label: Text('Stok'), numeric: true),
-                      DataColumn(label: Text('Harga Unit'), numeric: true),
-                      DataColumn(label: Text('Total Nilai'), numeric: true),
+                      DataColumn(label: Text('Nama Sparepart', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(label: Text('Perhitungan', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(label: Text('Total Nilai', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
                     ],
                     rows: _reportData.map((item) {
+                      final stock = item['total_stock'] ?? 0;
+                      final unitPrice = (item['latest_unit_price'] as num?)?.toDouble() ?? 0.0;
+
+                      // Membuat string untuk kolom perhitungan
+                      final calculationString = '$stock pcs × ${_formatCurrency(unitPrice)}';
+
                       return DataRow(cells: [
                         DataCell(Text(item['sparepart_name'] ?? 'N/A')),
-                        DataCell(Text((item['total_stock'] ?? 0).toString())),
-                        DataCell(Text(_formatCurrency(item['latest_unit_price']))),
-                        DataCell(Text(_formatCurrency(item['total_value']))),
+                        DataCell(Text(calculationString)), // Sel baru dengan detail perhitungan
+                        DataCell(Text(_formatCurrency(item['total_value']))), // Sel dengan hasil akhir
                       ]);
                     }).toList(),
                   ),
                 ),
+                // --- PERUBAHAN UTAMA SELESAI DI SINI ---
               ],
             ),
           );

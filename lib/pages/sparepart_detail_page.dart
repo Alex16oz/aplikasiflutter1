@@ -16,6 +16,7 @@ class SparepartDetailPage extends StatefulWidget {
 class _SparepartDetailPageState extends State<SparepartDetailPage> {
   late Future<List<StockTransaction>> _transactionsFuture;
   final _supabase = Supabase.instance.client;
+  StockTransaction? _lastTransaction; // Variabel untuk menyimpan transaksi terakhir
 
   @override
   void initState() {
@@ -23,6 +24,14 @@ class _SparepartDetailPageState extends State<SparepartDetailPage> {
     _transactionsFuture = _fetchTransactions();
   }
 
+  // Fungsi untuk memuat ulang data transaksi
+  Future<void> _refreshTransactions() async {
+    setState(() {
+      _transactionsFuture = _fetchTransactions();
+    });
+  }
+
+  // Fungsi untuk mengambil data transaksi dari database
   Future<List<StockTransaction>> _fetchTransactions() async {
     try {
       final response = await _supabase
@@ -31,9 +40,17 @@ class _SparepartDetailPageState extends State<SparepartDetailPage> {
           .eq('sparepart_id', widget.sparepartSummary.id)
           .order('transaction_date', ascending: false);
 
-      return (response as List)
+      final transactions = (response as List)
           .map((item) => StockTransaction.fromJson(item))
           .toList();
+
+      // Simpan transaksi pertama (yang terbaru) ke dalam state
+      if (mounted) {
+        setState(() {
+          _lastTransaction = transactions.isNotEmpty ? transactions.first : null;
+        });
+      }
+      return transactions;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -43,11 +60,148 @@ class _SparepartDetailPageState extends State<SparepartDetailPage> {
     }
   }
 
+  // Fungsi untuk membatalkan (menghapus) transaksi terakhir
+  Future<void> _undoLastTransaction(StockTransaction tx) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Undo Transaksi?'),
+        content: const Text('Anda yakin ingin menghapus transaksi terakhir? Aksi ini akan mengembalikan nilai stok dan tidak dapat dibatalkan.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Ya, Batalkan'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _supabase.from('stock_transactions').delete().eq('id', tx.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Transaksi terakhir berhasil dibatalkan.'),
+            backgroundColor: Colors.green,
+          ));
+          _refreshTransactions(); // Muat ulang data setelah berhasil
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Gagal membatalkan transaksi: $e'),
+            backgroundColor: Colors.red,
+          ));
+        }
+      }
+    }
+  }
+
+  // Fungsi untuk menampilkan dialog edit transaksi
+  Future<void> _showEditTransactionDialog(StockTransaction tx) async {
+    final formKey = GlobalKey<FormState>();
+    final qtyController = TextEditingController(text: tx.quantity.toString());
+    final priceController = TextEditingController(text: tx.unitPrice?.toStringAsFixed(0) ?? '');
+    final purposeOrSupplierController = TextEditingController(text: tx.supplier ?? '');
+
+    final isStockIn = tx.transactionType == 'IN';
+    final isStockOut = tx.transactionType == 'OUT';
+    final isRecount = tx.transactionType == 'RECOUNT';
+
+    await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Edit Transaksi (${tx.transactionType})'),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: qtyController,
+                    decoration: InputDecoration(labelText: isRecount ? 'Jumlah Stok Baru' : 'Jumlah'),
+                    keyboardType: TextInputType.number,
+                    validator: (v) => v == null || v.isEmpty || int.tryParse(v) == null ? 'Angka tidak valid' : null,
+                  ),
+                  if (isStockIn || isStockOut)
+                    TextFormField(
+                      controller: purposeOrSupplierController,
+                      decoration: InputDecoration(labelText: isStockIn ? 'Supplier' : 'Tujuan'),
+                      validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
+                    ),
+                  if (isStockIn)
+                    TextFormField(
+                      controller: priceController,
+                      decoration: const InputDecoration(labelText: 'Harga per Unit'),
+                      keyboardType: TextInputType.number,
+                    ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Batal')),
+            ElevatedButton(
+              onPressed: () async {
+                if (formKey.currentState!.validate()) {
+                  try {
+                    final updateData = {
+                      'quantity': int.parse(qtyController.text),
+                      'supplier': (isStockIn || isStockOut) ? purposeOrSupplierController.text.trim() : null,
+                      'unit_price': isStockIn ? double.tryParse(priceController.text.trim()) : null,
+                    };
+                    updateData.removeWhere((key, value) => value == null && key != 'unit_price');
+
+                    await _supabase.from('stock_transactions').update(updateData).eq('id', tx.id);
+
+                    if (mounted) {
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Transaksi berhasil diperbarui!'),
+                        backgroundColor: Colors.green,
+                      ));
+                      _refreshTransactions(); // Muat ulang data setelah berhasil
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text('Gagal memperbarui: $e'),
+                        backgroundColor: Colors.red,
+                      ));
+                    }
+                  }
+                }
+              },
+              child: const Text('Simpan Perubahan'),
+            ),
+          ],
+        ));
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.sparepartSummary.sparepartName),
+        // Menambahkan tombol aksi di AppBar
+        actions: [
+          if (_lastTransaction != null)
+            IconButton(
+              icon: const Icon(Icons.edit_note),
+              tooltip: 'Edit Transaksi Terakhir',
+              onPressed: () => _showEditTransactionDialog(_lastTransaction!),
+            ),
+          if (_lastTransaction != null)
+            IconButton(
+              icon: const Icon(Icons.undo),
+              tooltip: 'Undo Transaksi Terakhir',
+              onPressed: () => _undoLastTransaction(_lastTransaction!),
+            ),
+        ],
       ),
       body: Column(
         children: [
@@ -107,19 +261,17 @@ class _SparepartDetailPageState extends State<SparepartDetailPage> {
                   itemCount: transactions.length,
                   itemBuilder: (context, index) {
                     final tx = transactions[index];
+                    // Cek apakah ini transaksi terakhir untuk diberi highlight
+                    final isLastTx = tx.id == _lastTransaction?.id;
 
-                    // ==========================================================
-                    // ==== AWAL DARI BLOK LOGIKA YANG DIPERBARUI ====
-                    // ==========================================================
                     if (tx.transactionType == 'RECOUNT') {
-                      // Tampilan khusus untuk transaksi RECOUNT
                       return Card(
-                        color: Colors.blue.shade50,
+                        color: isLastTx ? Colors.yellow.shade100 : Colors.blue.shade50,
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         child: ListTile(
                           leading: Icon(Icons.inventory_2_outlined, color: Colors.blue.shade800),
                           title: const Text('Hitung Ulang Stok (Recount)'),
-                          subtitle: Text(DateFormat('dd MMM yyyy, HH:mm').format(tx.transactionDate.toLocal())),
+                          subtitle: Text(DateFormat('dd MMM kk, HH:mm').format(tx.transactionDate.toLocal())),
                           trailing: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.end,
@@ -138,11 +290,11 @@ class _SparepartDetailPageState extends State<SparepartDetailPage> {
                         ),
                       );
                     } else {
-                      // Tampilan untuk transaksi IN dan OUT (logika yang sudah ada)
                       final isStockIn = tx.transactionType == 'IN';
                       final purposeOrSupplier = tx.supplier;
 
                       return Card(
+                        color: isLastTx ? Colors.yellow.shade100 : null,
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         child: ListTile(
                           leading: Icon(
@@ -153,7 +305,7 @@ class _SparepartDetailPageState extends State<SparepartDetailPage> {
                               ? 'Stok Masuk dari ${purposeOrSupplier ?? "N/A"}'
                               : 'Stok Keluar untuk ${purposeOrSupplier ?? "N/A"}'
                           ),
-                          subtitle: Text(DateFormat('dd MMM yyyy, HH:mm').format(tx.transactionDate.toLocal())),
+                          subtitle: Text(DateFormat('dd MMM kk, HH:mm').format(tx.transactionDate.toLocal())),
                           trailing: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.end,
@@ -174,9 +326,6 @@ class _SparepartDetailPageState extends State<SparepartDetailPage> {
                         ),
                       );
                     }
-                    // ==========================================================
-                    // ==== AKHIR DARI BLOK LOGIKA YANG DIPERBARUI ====
-                    // ==========================================================
                   },
                 );
               },
