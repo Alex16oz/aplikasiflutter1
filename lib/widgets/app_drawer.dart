@@ -14,16 +14,17 @@ import '../pages/damage_reports_page.dart';
 import '../pages/attendance_reports_page.dart';
 import '../pages/settings_page.dart';
 import '../pages/about_page.dart';
-
-// Import halaman baru
 import '../pages/my_tasks_page.dart';
 import '../pages/work_log_approval_page.dart';
-
+import '../pages/reports_hub_page.dart'; // Impor baru
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
 
   void _navigateToPage(BuildContext context, String routeName, {bool replace = false, Object? arguments}) {
+    // Cek jika context masih valid sebelum digunakan
+    if (!context.mounted) return;
+
     if (Navigator.canPop(context)) {
       Navigator.pop(context);
     }
@@ -39,12 +40,13 @@ class AppDrawer extends StatelessWidget {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     final String? currentRouteName = ModalRoute.of(context)?.settings.name;
+    // Mengambil argumen sebagai Map, sesuai dengan struktur proyek Anda
     final user = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
 
+    // Mengakses data dari Map dengan aman
     final String username = user?['username'] ?? 'Guest';
     final String email = user?['email'] ?? 'guest@example.com';
     final String userRole = user?['role'] ?? '';
@@ -72,11 +74,11 @@ class AppDrawer extends StatelessWidget {
               child: Icon(
                 Icons.person,
                 size: 50.0,
-                color: const Color(0xFF1976D2),
+                color: Theme.of(context).primaryColor,
               ),
             ),
-            decoration: const BoxDecoration(
-              color: Color(0xFF1976D2),
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor,
             ),
           ),
           ListTile(
@@ -131,14 +133,17 @@ class AppDrawer extends StatelessWidget {
               _navigateToPage(context, AttendancePage.routeName, replace: true, arguments: user);
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.manage_accounts_outlined),
-            title: const Text('User Management'),
-            selected: currentRouteName == UserManagementPage.routeName,
-            onTap: () {
-              _navigateToPage(context, UserManagementPage.routeName, replace: true, arguments: user);
-            },
-          ),
+          if (userRole == 'Admin') ...[
+            ListTile(
+              leading: const Icon(Icons.manage_accounts_outlined),
+              title: const Text('User Management'),
+              selected: currentRouteName == UserManagementPage.routeName,
+              onTap: () {
+                _navigateToPage(context, UserManagementPage.routeName, replace: true, arguments: user);
+              },
+            ),
+          ],
+
           const _DrawerSectionHeader(title: 'DATA'),
           ListTile(
             leading: const Icon(Icons.store_mall_directory),
@@ -164,31 +169,16 @@ class AppDrawer extends StatelessWidget {
               _navigateToPage(context, WarehousePage.routeName, replace: true, arguments: user);
             },
           ),
+
+          // Bagian Laporan yang baru
           const _DrawerSectionHeader(title: 'REPORTS'),
           ListTile(
-            leading: const Icon(Icons.receipt_long),
-            title: const Text('Repair Reports'),
-            selected: currentRouteName == RepairReportsPage.routeName,
-            onTap: () {
-              _navigateToPage(context, RepairReportsPage.routeName, replace: true, arguments: user);
-            },
+            leading: const Icon(Icons.assessment_outlined),
+            title: const Text('Pusat Laporan'),
+            selected: currentRouteName == ReportsHubPage.routeName,
+            onTap: () => _navigateToPage(context, ReportsHubPage.routeName, replace: true, arguments: user),
           ),
-          ListTile(
-            leading: const Icon(Icons.warning_amber_outlined),
-            title: const Text('Damage Reports'),
-            selected: currentRouteName == DamageReportsPage.routeName,
-            onTap: () {
-              _navigateToPage(context, DamageReportsPage.routeName, replace: true, arguments: user);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.event_note_outlined),
-            title: const Text('Attendance Reports'),
-            selected: currentRouteName == AttendanceReportsPage.routeName,
-            onTap: () {
-              _navigateToPage(context, AttendanceReportsPage.routeName, replace: true, arguments: user);
-            },
-          ),
+
           const _DrawerSectionHeader(title: 'SYSTEM'),
           ListTile(
             leading: const Icon(Icons.settings),
@@ -214,7 +204,10 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Logout'),
             onTap: () async {
               await Supabase.instance.client.auth.signOut();
-              _navigateToPage(context, LoginPage.routeName, replace: true);
+              // Cek mounted sebelum panggil _navigateToPage
+              if (context.mounted) {
+                _navigateToPage(context, LoginPage.routeName, replace: true);
+              }
             },
           ),
         ],

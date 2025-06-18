@@ -1,5 +1,4 @@
 // lib/main.dart
-
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -19,9 +18,9 @@ import 'pages/attendance_reports_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/about_page.dart';
 import 'pages/user_attendance_history_page.dart';
-// Import halaman baru untuk modul kepegawaian
 import 'pages/my_tasks_page.dart';
 import 'pages/work_log_approval_page.dart';
+import 'pages/reports_hub_page.dart'; // Impor baru
 
 // Fungsi utama yang dijalankan pertama kali
 Future<void> main() async {
@@ -81,9 +80,9 @@ class MyApp extends StatelessWidget {
         SettingsPage.routeName: (context) => const SettingsPage(),
         AboutPage.routeName: (context) => const AboutPage(),
         UserAttendanceHistoryPage.routeName: (context) => const UserAttendanceHistoryPage(),
-        // Rute baru untuk modul kepegawaian
         MyTasksPage.routeName: (context) => const MyTasksPage(),
         WorkLogApprovalPage.routeName: (context) => const WorkLogApprovalPage(),
+        ReportsHubPage.routeName: (context) => const ReportsHubPage(),
       },
       // Menghilangkan banner debug di pojok kanan atas
       debugShowCheckedModeBanner: false,
