@@ -1,4 +1,6 @@
 // lib/main.dart
+
+// (Bagian import di atas sini tetap sama)
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -20,27 +22,19 @@ import 'pages/about_page.dart';
 import 'pages/user_attendance_history_page.dart';
 import 'pages/my_tasks_page.dart';
 import 'pages/work_log_approval_page.dart';
-import 'pages/reports_hub_page.dart'; // Impor baru
+import 'pages/reports_hub_page.dart';
 
-// Fungsi utama yang dijalankan pertama kali
 Future<void> main() async {
-  // Memastikan semua komponen Flutter siap sebelum aplikasi berjalan
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Menginisialisasi data format tanggal untuk Bahasa Indonesia ('id_ID')
   await initializeDateFormatting('id_ID', null);
-
-  // Menginisialisasi koneksi ke Supabase
   await Supabase.initialize(
     url: 'https://sgnavqdkkglhesglhrdi.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNnbmF2cWRra2dsaGVzZ2xocmRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0ODcyMzEsImV4cCI6MjA2NDA2MzIzMX0.nRQXlWwf-9CRjQVsff45aShM1_-WAqY1DZ0ND8r_i04',
   );
-
-  // Menjalankan aplikasi
   runApp(const MyApp());
 }
 
-// Widget utama aplikasi
+// Widget utama aplikasi (SUDAH DIPERBAIKI)
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -62,6 +56,25 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
+
+      // ===== PENAMBAHAN DIMULAI DI SINI =====
+      // Mendaftarkan delegate untuk lokalisasi widget Material, Cupertino, dll.
+      // Ini memberitahu Flutter cara memuat teks untuk bahasa yang berbeda.
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      // Mendeklarasikan bahasa apa saja yang didukung oleh aplikasi Anda.
+      supportedLocales: const [
+        Locale('id', 'ID'), // Bahasa Indonesia
+        // Anda bisa menambahkan locale lain di sini jika perlu, contoh:
+        // Locale('en', 'US'), // Bahasa Inggris
+      ],
+      // Mengatur Bahasa Indonesia sebagai bahasa default aplikasi.
+      locale: const Locale('id', 'ID'),
+      // ===== PENAMBAHAN SELESAI =====
+
       // Halaman pertama yang dibuka saat aplikasi dijalankan
       initialRoute: LoginPage.routeName,
       // Daftar semua halaman yang bisa diakses melalui navigasi nama
