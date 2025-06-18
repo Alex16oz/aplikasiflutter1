@@ -1,5 +1,7 @@
 // lib/pages/reports_hub_page.dart
 import 'package:flutter/material.dart';
+// Impor halaman baru
+import 'package:testflut1/pages/employee_reports_page.dart';
 import 'package:testflut1/pages/warehouse_reports_page.dart';
 import '../widgets/app_drawer.dart';
 
@@ -34,7 +36,23 @@ class ReportsHubPage extends StatelessWidget {
               );
             },
           ),
-          // Tambahkan card untuk jenis laporan lain di sini (misal: Laporan Keuangan, dll)
+          // --- TAMBAHKAN CARD INI ---
+          _buildReportCard(
+            context,
+            title: 'Laporan Kepegawaian',
+            subtitle: 'Analisis kehadiran, produktivitas, dan penugasan.',
+            icon: Icons.people_alt_outlined,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EmployeeReportsPage(),
+                  settings: RouteSettings(arguments: userArgs),
+                ),
+              );
+            },
+          ),
+          // --------------------------
         ],
       ),
     );
