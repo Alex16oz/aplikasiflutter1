@@ -1,9 +1,10 @@
-// lib/pages/repair_reports_page.dart (KODE LENGKAP FINAL)
+// lib/pages/repair_reports_page.dart
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../widgets/app_drawer.dart';
+// Hapus import AppDrawer karena sudah tidak digunakan
+// import '../widgets/app_drawer.dart';
 
 class RepairReportsPage extends StatefulWidget {
   final int? scheduleId;
@@ -103,7 +104,8 @@ class _RepairReportsPageState extends State<RepairReportsPage> {
           IconButton(onPressed: _refreshReports, icon: const Icon(Icons.refresh))
         ],
       ),
-      drawer: widget.scheduleId == null ? const AppDrawer() : null,
+      // --- PERUBAHAN: Properti drawer dihapus ---
+      // drawer: widget.scheduleId == null ? const AppDrawer() : null,
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _reportsFuture,
         builder: (context, snapshot) {

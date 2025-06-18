@@ -1,7 +1,8 @@
 // lib/pages/reports_hub_page.dart
 import 'package:flutter/material.dart';
-// Impor halaman baru
+import 'package:testflut1/pages/damage_reports_page.dart';
 import 'package:testflut1/pages/employee_reports_page.dart';
+import 'package:testflut1/pages/repair_reports_page.dart';
 import 'package:testflut1/pages/warehouse_reports_page.dart';
 import '../widgets/app_drawer.dart';
 
@@ -23,6 +24,24 @@ class ReportsHubPage extends StatelessWidget {
         children: [
           _buildReportCard(
             context,
+            title: 'Laporan Kerusakan',
+            subtitle: 'Lihat semua laporan kerusakan yang masuk dari operator.',
+            icon: Icons.warning_amber_rounded,
+            onTap: () {
+              Navigator.pushNamed(context, DamageReportsPage.routeName, arguments: userArgs);
+            },
+          ),
+          _buildReportCard(
+            context,
+            title: 'Laporan Perbaikan',
+            subtitle: 'Tinjau semua laporan perbaikan yang telah diselesaikan.',
+            icon: Icons.build_circle_outlined,
+            onTap: () {
+              Navigator.pushNamed(context, RepairReportsPage.routeName, arguments: userArgs);
+            },
+          ),
+          _buildReportCard(
+            context,
             title: 'Laporan Gudang',
             subtitle: 'Analisis stok, nilai inventaris, dan pergerakan barang.',
             icon: Icons.inventory_2_outlined,
@@ -36,7 +55,6 @@ class ReportsHubPage extends StatelessWidget {
               );
             },
           ),
-          // --- TAMBAHKAN CARD INI ---
           _buildReportCard(
             context,
             title: 'Laporan Kepegawaian',
@@ -52,7 +70,6 @@ class ReportsHubPage extends StatelessWidget {
               );
             },
           ),
-          // --------------------------
         ],
       ),
     );
@@ -66,6 +83,7 @@ class ReportsHubPage extends StatelessWidget {
   }) {
     return Card(
       elevation: 3,
+      margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: Icon(icon, size: 40, color: Theme.of(context).primaryColor),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),

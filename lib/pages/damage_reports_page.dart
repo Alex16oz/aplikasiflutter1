@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:testflut1/pages/schedule_page.dart';
-import '../widgets/app_drawer.dart';
+// Hapus import AppDrawer karena sudah tidak digunakan
+// import '../widgets/app_drawer.dart';
 
 class DamageReportsPage extends StatefulWidget {
   const DamageReportsPage({super.key});
@@ -46,7 +47,7 @@ class _DamageReportsPageState extends State<DamageReportsPage> {
 
   String _formatDate(String dateString) {
     try {
-      return DateFormat('dd MMM yyyy, HH:mm').format(DateTime.parse(dateString));
+      return DateFormat('dd MMM yy, HH:mm').format(DateTime.parse(dateString));
     } catch(e) {
       return 'Invalid Date';
     }
@@ -65,7 +66,8 @@ class _DamageReportsPageState extends State<DamageReportsPage> {
           )
         ],
       ),
-      drawer: const AppDrawer(),
+      // --- PERUBAHAN: Properti drawer dihapus ---
+      // drawer: const AppDrawer(),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _reportsFuture,
         builder: (context, snapshot) {
