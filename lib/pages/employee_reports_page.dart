@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:testflut1/pages/assignment_report_page.dart';
 import 'package:testflut1/pages/attendance_recap_report_page.dart';
 import 'package:testflut1/pages/productivity_report_page.dart';
+import 'package:testflut1/pages/overtime_report_page.dart';
 
 class EmployeeReportsPage extends StatelessWidget {
   const EmployeeReportsPage({super.key});
@@ -41,6 +42,15 @@ class EmployeeReportsPage extends StatelessWidget {
             icon: Icons.assignment_ind_outlined,
             onTap: () {
               Navigator.push(context, MaterialPageRoute(builder: (context) => const AssignmentReportPage()));
+            },
+          ),
+          _buildReportCard(
+            context,
+            title: 'Laporan Lembur', // KARTU BARU
+            subtitle: 'Rekapitulasi jam lembur pegawai yang telah disetujui.',
+            icon: Icons.access_time_filled_outlined,
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const OvertimeReportPage()));
             },
           ),
         ],
