@@ -1,10 +1,9 @@
 // lib/main.dart
-
-// (Bagian import di atas sini tetap sama)
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+
 // Import semua halaman yang dibutuhkan
 import 'pages/login_page.dart';
 import 'pages/dashboard_page.dart';
@@ -23,6 +22,9 @@ import 'pages/user_attendance_history_page.dart';
 import 'pages/my_tasks_page.dart';
 import 'pages/work_log_approval_page.dart';
 import 'pages/reports_hub_page.dart';
+// --- PENAMBAHAN BARU ---
+import 'pages/maintenance_templates_page.dart';
+// -----------------------
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,7 +36,6 @@ Future<void> main() async {
   runApp(const MyApp());
 }
 
-// Widget utama aplikasi (SUDAH DIPERBAIKI)
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -56,28 +57,16 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-
-      // ===== PENAMBAHAN DIMULAI DI SINI =====
-      // Mendaftarkan delegate untuk lokalisasi widget Material, Cupertino, dll.
-      // Ini memberitahu Flutter cara memuat teks untuk bahasa yang berbeda.
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      // Mendeklarasikan bahasa apa saja yang didukung oleh aplikasi Anda.
       supportedLocales: const [
-        Locale('id', 'ID'), // Bahasa Indonesia
-        // Anda bisa menambahkan locale lain di sini jika perlu, contoh:
-        // Locale('en', 'US'), // Bahasa Inggris
+        Locale('id', 'ID'),
       ],
-      // Mengatur Bahasa Indonesia sebagai bahasa default aplikasi.
       locale: const Locale('id', 'ID'),
-      // ===== PENAMBAHAN SELESAI =====
-
-      // Halaman pertama yang dibuka saat aplikasi dijalankan
       initialRoute: LoginPage.routeName,
-      // Daftar semua halaman yang bisa diakses melalui navigasi nama
       routes: {
         LoginPage.routeName: (context) => const LoginPage(),
         DashboardPage.routeName: (context) => const DashboardPage(),
@@ -96,8 +85,10 @@ class MyApp extends StatelessWidget {
         MyTasksPage.routeName: (context) => const MyTasksPage(),
         WorkLogApprovalPage.routeName: (context) => const WorkLogApprovalPage(),
         ReportsHubPage.routeName: (context) => const ReportsHubPage(),
+        // --- PENAMBAHAN RUTE BARU ---
+        MaintenanceTemplatesPage.routeName: (context) => const MaintenanceTemplatesPage(),
+        // ---------------------------
       },
-      // Menghilangkan banner debug di pojok kanan atas
       debugShowCheckedModeBanner: false,
     );
   }
