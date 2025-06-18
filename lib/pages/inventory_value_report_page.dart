@@ -1,19 +1,51 @@
 // lib/pages/inventory_value_report_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:collection/collection.dart'; // Import package baru
+
+// Model data untuk merepresentasikan setiap lapisan stok
+class InventoryLayer {
+  final String sparepartName;
+  final int remainingQuantity;
+  final double unitPrice;
+  final double totalValue;
+  final DateTime? purchaseDate;
+
+  InventoryLayer({
+    required this.sparepartName,
+    required this.remainingQuantity,
+    required this.unitPrice,
+    required this.totalValue,
+    this.purchaseDate,
+  });
+
+  factory InventoryLayer.fromJson(Map<String, dynamic> json) {
+    return InventoryLayer(
+      sparepartName: json['sparepart_name'] ?? 'N/A',
+      remainingQuantity: (json['remaining_quantity'] as num?)?.toInt() ?? 0,
+      unitPrice: (json['unit_price'] as num?)?.toDouble() ?? 0.0,
+      totalValue: (json['total_value'] as num?)?.toDouble() ?? 0.0,
+      purchaseDate: json['purchase_date'] != null
+          ? DateTime.parse(json['purchase_date'])
+          : null,
+    );
+  }
+}
 
 class InventoryValueReportPage extends StatefulWidget {
   const InventoryValueReportPage({super.key});
 
   @override
-  State<InventoryValueReportPage> createState() => _InventoryValueReportPageState();
+  State<InventoryValueReportPage> createState() =>
+      _InventoryValueReportPageState();
 }
 
 class _InventoryValueReportPageState extends State<InventoryValueReportPage> {
-  late Future<List<Map<String, dynamic>>> _reportFuture;
+  // Future sekarang akan berisi data yang sudah dikelompokkan
+  late Future<Map<String, List<InventoryLayer>>> _reportFuture;
   final _supabase = Supabase.instance.client;
-  List<Map<String, dynamic>> _reportData = [];
   double _grandTotal = 0.0;
 
   @override
@@ -24,49 +56,62 @@ class _InventoryValueReportPageState extends State<InventoryValueReportPage> {
 
   void _refreshReport() {
     setState(() {
-      _reportFuture = _fetchReport();
+      _reportFuture = _fetchAndGroupReport();
     });
   }
 
-  Future<List<Map<String, dynamic>>> _fetchReport() async {
+  // Fungsi baru untuk mengambil dan mengelompokkan data
+  Future<Map<String, List<InventoryLayer>>> _fetchAndGroupReport() async {
     try {
-      final data = await _supabase.rpc('get_inventory_value_report');
-      final reportList = List<Map<String, dynamic>>.from(data);
+      // PENTING: Panggil RPC baru yang sudah menerapkan logika FIFO di backend
+      final data = await _supabase.rpc('get_fifo_inventory_report');
 
+      final layers =
+      (data as List).map((item) => InventoryLayer.fromJson(item)).toList();
+
+      // Hitung grand total dari semua lapisan stok
       double total = 0;
-      for (var item in reportList) {
-        total += (item['total_value'] as num?)?.toDouble() ?? 0.0;
+      for (var layer in layers) {
+        total += layer.totalValue;
       }
 
       if (mounted) {
         setState(() {
-          _reportData = reportList;
           _grandTotal = total;
         });
       }
-      return reportList;
+
+      // Kelompokkan data berdasarkan nama sparepart
+      final groupedData = groupBy(layers, (layer) => layer.sparepartName);
+      return groupedData;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gagal memuat laporan: $e'), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(
+                'Gagal memuat laporan: $e. Pastikan RPC "get_fifo_inventory_report" ada di Supabase.'),
+            backgroundColor: Colors.red));
       }
-      return [];
+      return {};
     }
   }
 
   String _formatCurrency(dynamic value) {
     final number = (value as num?)?.toDouble() ?? 0.0;
-    return NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(number);
+    return NumberFormat.currency(
+        locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0)
+        .format(number);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Laporan Nilai Inventaris'),
-        actions: [IconButton(onPressed: _refreshReport, icon: const Icon(Icons.refresh))],
+        title: const Text('Nilai Inventaris (FIFO)'),
+        actions: [
+          IconButton(onPressed: _refreshReport, icon: const Icon(Icons.refresh))
+        ],
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
+      body: FutureBuilder<Map<String, List<InventoryLayer>>>(
         future: _reportFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -75,58 +120,110 @@ class _InventoryValueReportPageState extends State<InventoryValueReportPage> {
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
-          if (_reportData.isEmpty) {
-            return const Center(child: Text('Tidak ada data untuk ditampilkan.'));
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(
+                child: Text('Tidak ada data untuk ditampilkan.'));
           }
 
-          return SingleChildScrollView(
-            scrollDirection: Axis.vertical,
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Card(
-                    color: Theme.of(context).primaryColor,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Total Nilai Gudang', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
-                          Text(_formatCurrency(_grandTotal), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
-                        ],
-                      ),
+          final groupedReport = snapshot.data!;
+          final sparepartNames = groupedReport.keys.toList();
+
+          return Column(
+            children: [
+              // Kartu Grand Total
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Card(
+                  color: Theme.of(context).primaryColor,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Total Nilai Gudang',
+                            style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black)),
+                        Text(_formatCurrency(_grandTotal),
+                            style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black)),
+                      ],
                     ),
                   ),
                 ),
-                // --- PERUBAHAN UTAMA DIMULAI DI SINI ---
-                SizedBox(
-                  width: double.infinity,
-                  child: DataTable(
-                    columnSpacing: 20.0,
-                    columns: const [
-                      DataColumn(label: Text('Nama Sparepart', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Perhitungan', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Total Nilai', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
-                    ],
-                    rows: _reportData.map((item) {
-                      final stock = item['total_stock'] ?? 0;
-                      final unitPrice = (item['latest_unit_price'] as num?)?.toDouble() ?? 0.0;
-
-                      // Membuat string untuk kolom perhitungan
-                      final calculationString = '$stock pcs × ${_formatCurrency(unitPrice)}';
-
-                      return DataRow(cells: [
-                        DataCell(Text(item['sparepart_name'] ?? 'N/A')),
-                        DataCell(Text(calculationString)), // Sel baru dengan detail perhitungan
-                        DataCell(Text(_formatCurrency(item['total_value']))), // Sel dengan hasil akhir
-                      ]);
-                    }).toList(),
-                  ),
+              ),
+              // Teks penjelasan metode FIFO
+              const Padding(
+                padding:
+                EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Text(
+                  'Laporan ini dihitung menggunakan metode FIFO (First-In, First-Out). Barang yang pertama masuk diasumsikan keluar lebih dulu.',
+                  style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey),
+                  textAlign: TextAlign.center,
                 ),
-                // --- PERUBAHAN UTAMA SELESAI DI SINI ---
-              ],
-            ),
+              ),
+              // Daftar sparepart yang bisa diperluas (ExpansionTile)
+              Expanded(
+                child: ListView.builder(
+                  itemCount: sparepartNames.length,
+                  itemBuilder: (context, index) {
+                    final sparepartName = sparepartNames[index];
+                    final layers = groupedReport[sparepartName]!;
+                    final totalValuePerItem = layers.fold<double>(
+                        0, (sum, item) => sum + item.totalValue);
+                    final totalStockPerItem = layers.fold<int>(
+                        0, (sum, item) => sum + item.remainingQuantity);
+
+                    return Card(
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 6),
+                      child: ExpansionTile(
+                        title: Text(sparepartName,
+                            style:
+                            const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text('Total Stok: $totalStockPerItem pcs'),
+                        trailing: Text(
+                          _formatCurrency(totalValuePerItem),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, color: Colors.blue),
+                        ),
+                        // Bagian ini menampilkan detail lapisan stok saat diperluas
+                        children: [
+                          DataTable(
+                            columnSpacing: 10,
+                            columns: const [
+                              DataColumn(label: Text('Tgl. Beli')),
+                              DataColumn(
+                                  label: Text('Sisa Stok'), numeric: true),
+                              DataColumn(
+                                  label: Text('Harga Beli'), numeric: true),
+                              DataColumn(label: Text('Nilai'), numeric: true),
+                            ],
+                            rows: layers.map((layer) {
+                              return DataRow(cells: [
+                                DataCell(Text(layer.purchaseDate != null
+                                    ? DateFormat('dd MMM yy', 'id_ID')
+                                    .format(layer.purchaseDate!)
+                                    : 'N/A')),
+                                DataCell(
+                                    Text(layer.remainingQuantity.toString())),
+                                DataCell(
+                                    Text(_formatCurrency(layer.unitPrice))),
+                                DataCell(
+                                    Text(_formatCurrency(layer.totalValue))),
+                              ]);
+                            }).toList(),
+                          )
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           );
         },
       ),
