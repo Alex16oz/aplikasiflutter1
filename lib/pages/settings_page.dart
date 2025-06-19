@@ -20,32 +20,19 @@ class SettingsPage extends StatelessWidget {
             leading: const Icon(Icons.language),
             title: const Text('Bahasa'),
             subtitle: const Text('Indonesia'),
+            trailing: const Icon(Icons.keyboard_arrow_down),
             onTap: () {
+              // Menampilkan dialog atau pesan saat item diklik
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Pengaturan bahasa lain belum tersedia.')),
+                const SnackBar(
+                  content: Text('Saat ini hanya Bahasa Indonesia yang tersedia.'),
+                  duration: Duration(seconds: 2),
+                ),
               );
             },
           ),
-          SwitchListTile(
-            title: const Text('Notifikasi Push'),
-            subtitle: const Text('Terima pembaruan penting'),
-            value: true, // Nilai statis sebagai contoh
-            onChanged: (bool value) {
-              // Logika untuk mengubah status notifikasi
-            },
-            secondary: const Icon(Icons.notifications_active),
-          ),
           const Divider(),
-          ListTile(
-            title: const Text('Bantuan & Dukungan'),
-            leading: const Icon(Icons.help_outline),
-            onTap: () {},
-          ),
-          ListTile(
-            title: const Text('Kebijakan Privasi'),
-            leading: const Icon(Icons.privacy_tip_outlined),
-            onTap: () {},
-          ),
+          // Semua item pengaturan lainnya telah dihapus
         ],
       ),
     );
