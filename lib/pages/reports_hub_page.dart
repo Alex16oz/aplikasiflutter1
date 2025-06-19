@@ -14,6 +14,12 @@ class ReportsHubPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final userArgs = ModalRoute.of(context)?.settings.arguments;
 
+    // Tambahkan baris ini untuk mendapatkan role pengguna
+    String userRole = '';
+    if (userArgs is Map<String, dynamic>) {
+      userRole = userArgs['role'] ?? '';
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pusat Laporan'),
@@ -55,21 +61,23 @@ class ReportsHubPage extends StatelessWidget {
               );
             },
           ),
-          _buildReportCard(
-            context,
-            title: 'Laporan Kepegawaian',
-            subtitle: 'Analisis kehadiran, produktivitas, dan penugasan.',
-            icon: Icons.people_alt_outlined,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const EmployeeReportsPage(),
-                  settings: RouteSettings(arguments: userArgs),
-                ),
-              );
-            },
-          ),
+          // Tambahkan kondisi 'if' di sini untuk menampilkan kartu hanya untuk Admin
+          if (userRole == 'Admin')
+            _buildReportCard(
+              context,
+              title: 'Laporan Kepegawaian',
+              subtitle: 'Analisis kehadiran, produktivitas, dan penugasan.',
+              icon: Icons.people_alt_outlined,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const EmployeeReportsPage(),
+                    settings: RouteSettings(arguments: userArgs),
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );

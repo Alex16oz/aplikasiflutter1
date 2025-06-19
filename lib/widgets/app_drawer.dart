@@ -109,12 +109,17 @@ class AppDrawer extends StatelessWidget {
             selected: currentRouteName == UserProfilePage.routeName,
             onTap: () => _navigateToPage(context, UserProfilePage.routeName, replace: true, arguments: user),
           ),
-          ListTile(
-            leading: const Icon(Icons.check_circle_outline),
-            title: const Text('Absensi'),
-            selected: currentRouteName == AttendancePage.routeName,
-            onTap: () => _navigateToPage(context, AttendancePage.routeName, replace: true, arguments: user),
-          ),
+
+          // Tambahkan kondisi 'if' di sini untuk menyembunyikan Absensi dari Admin
+          if (userRole != 'Admin') ...[
+            ListTile(
+              leading: const Icon(Icons.check_circle_outline),
+              title: const Text('Absensi'),
+              selected: currentRouteName == AttendancePage.routeName,
+              onTap: () => _navigateToPage(context, AttendancePage.routeName, replace: true, arguments: user),
+            ),
+          ],
+
           if (userRole == 'Admin') ...[
             ListTile(
               leading: const Icon(Icons.manage_accounts_outlined),
