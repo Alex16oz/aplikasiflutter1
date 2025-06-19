@@ -27,7 +27,6 @@ class _SchedulePageState extends State<SchedulePage> {
     _schedulesFuture = _fetchSchedules();
   }
 
-  // ===[ PERBAIKAN DIMULAI DI SINI ]===
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -36,15 +35,12 @@ class _SchedulePageState extends State<SchedulePage> {
       final routeArgs = ModalRoute.of(context)?.settings.arguments;
       Map<String, dynamic>? args;
 
-      // Lakukan pengecekan tipe yang aman
       if (routeArgs is Map) {
-        // Konversi map secara manual untuk memastikan tipe data yang benar
         args = Map<String, dynamic>.from(
             routeArgs.map((key, value) => MapEntry(key.toString(), value))
         );
       }
 
-      // Ekstrak data dari argumen yang sudah aman
       _currentUserRole = args?['role'] ?? (args?['user']?['role']);
 
       if (args?['damage_report'] is Map) {
@@ -52,8 +48,7 @@ class _SchedulePageState extends State<SchedulePage> {
       }
 
       if (_initialDamageReport != null) {
-        _isInitialDialogShown = true; // Tandai agar tidak berjalan lagi
-        // Panggil dialog setelah frame pertama selesai dibangun
+        _isInitialDialogShown = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             _showScheduleDialog(damageReport: _initialDamageReport);
@@ -62,7 +57,6 @@ class _SchedulePageState extends State<SchedulePage> {
       }
     }
   }
-  // ===[ PERBAIKAN SELESAI DI SINI ]===
 
   Future<void> _refreshSchedules() async {
     setState(() {
@@ -91,12 +85,25 @@ class _SchedulePageState extends State<SchedulePage> {
     }
   }
 
-  Future<void> _deleteSchedule(int scheduleId) async {
+  // ===[ FUNGSI BARU UNTUK PENANGANAN PENGHAPUSAN YANG AMAN ]===
+  void _handleDelete(dynamic scheduleId, dynamic machineId) {
+    if (scheduleId == null || machineId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Error: Data jadwal tidak lengkap untuk dihapus.'),
+        backgroundColor: Colors.red,
+      ));
+      return;
+    }
+    // Panggil fungsi hapus yang sebenarnya setelah data dipastikan ada
+    _deleteSchedule(scheduleId as int, machineId as int);
+  }
+
+  Future<void> _deleteSchedule(int scheduleId, int machineId) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Konfirmasi Hapus'),
-        content: const Text('Anda yakin ingin menghapus jadwal ini? Jadwal yang dibuat otomatis akan muncul lagi sesuai periodenya.'),
+        content: const Text('Anda yakin ingin menghapus jadwal ini? Status mesin akan dikembalikan ke operasional.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -113,9 +120,11 @@ class _SchedulePageState extends State<SchedulePage> {
     if (confirmed == true) {
       try {
         await _supabase.from('schedules').delete().eq('id', scheduleId);
+        await _supabase.from('machines').update({'operational_status': 'operasional'}).eq('id', machineId);
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content: Text('Jadwal berhasil dihapus!'),
+              content: Text('Jadwal berhasil dihapus dan status mesin diperbarui!'),
               backgroundColor: Colors.green));
           _refreshSchedules();
         }
@@ -266,47 +275,30 @@ class _SchedulePageState extends State<SchedulePage> {
                           };
 
                           if (isEditing) {
-                            // LOGIKA EDIT
                             await _supabase.from('schedules').update(scheduleData).eq('id', schedule['schedule_id']);
-
                             await _supabase.from('schedule_operators').delete().eq('schedule_id', schedule['schedule_id']);
-                            final operatorRecords = selectedOperatorIds.map((opId) => {
-                              'schedule_id': schedule['schedule_id'],
-                              'operator_id': opId
-                            }).toList();
+                            final operatorRecords = selectedOperatorIds.map((opId) => {'schedule_id': schedule['schedule_id'],'operator_id': opId}).toList();
                             await _supabase.from('schedule_operators').insert(operatorRecords);
                           } else {
-                            // LOGIKA BUAT BARU
-                            final newSchedule = await _supabase.from('schedules').insert({
-                              ...scheduleData,
-                              'created_by': _supabase.auth.currentUser!.id,
-                              'damage_report_id': damageReport?['id'],
-                            }).select().single();
+                            final newSchedule = await _supabase.from('schedules').insert({...scheduleData,'created_by': _supabase.auth.currentUser!.id,'damage_report_id': damageReport?['id'],}).select().single();
                             final newScheduleId = newSchedule['id'];
-
-                            final operatorRecords = selectedOperatorIds.map((opId) => {
-                              'schedule_id': newScheduleId,
-                              'operator_id': opId
-                            }).toList();
+                            final operatorRecords = selectedOperatorIds.map((opId) => {'schedule_id': newScheduleId, 'operator_id': opId}).toList();
                             await _supabase.from('schedule_operators').insert(operatorRecords);
+
+                            await _supabase.from('machines').update({'operational_status': 'perlu perbaikan'}).eq('id', currentMachineId!);
 
                             if (damageReport != null) {
                               await _supabase.from('damage_reports').update({'status': 'Scheduled'}).eq('id', damageReport['id']);
-                              await _supabase.from('machines').update({'operational_status': 'perlu perbaikan'}).eq('id', damageReport['machine_id']);
                             }
                           }
 
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text('Jadwal berhasil ${isEditing ? 'diperbarui' : 'dibuat'}!'),
-                                backgroundColor: Colors.green));
-                            Navigator.of(dialogContext).pop(true); // Kirim 'true' untuk menandakan sukses
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Jadwal berhasil ${isEditing ? 'diperbarui' : 'dibuat'}!'), backgroundColor: Colors.green));
+                            Navigator.of(dialogContext).pop(true);
                           }
                         } catch (e) {
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text('Gagal menyimpan jadwal: $e'),
-                                backgroundColor: Colors.red));
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menyimpan jadwal: $e'), backgroundColor: Colors.red));
                           }
                         }
                       }
@@ -388,28 +380,16 @@ class _SchedulePageState extends State<SchedulePage> {
                       DataCell(
                         Row(
                           children: [
-                            Icon(
-                              isAutoGenerated ? Icons.event_repeat_outlined : Icons.build_circle_outlined,
-                              size: 18,
-                              color: isAutoGenerated ? Colors.purple : Colors.orange,
-                            ),
+                            Icon(isAutoGenerated ? Icons.event_repeat_outlined : Icons.build_circle_outlined, size: 18, color: isAutoGenerated ? Colors.purple : Colors.orange),
                             const SizedBox(width: 8),
-                            Expanded(child: Text(
-                                '${DateFormat('dd MMM yy').format(DateTime.parse(schedule['schedule_date']))}\n$taskDescription',
-                                maxLines: 3,
-                                overflow: TextOverflow.ellipsis
-                            )),
+                            Expanded(child: Text('${DateFormat('dd MMM yy').format(DateTime.parse(schedule['schedule_date']))}\n$taskDescription', maxLines: 3, overflow: TextOverflow.ellipsis)),
                           ],
                         ),
                       ),
                       DataCell(Text(schedule['machine_name'] ?? 'N/A')),
                       DataCell(Text(operatorNames.isNotEmpty ? operatorNames.join(', ') : 'Belum dialokasikan')),
                       DataCell(
-                        Chip(
-                          label: Text(scheduleStatus, style: const TextStyle(color: Colors.black87)),
-                          backgroundColor: _getStatusColor(scheduleStatus),
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                        ),
+                        Chip(label: Text(scheduleStatus, style: const TextStyle(color: Colors.black87)), backgroundColor: _getStatusColor(scheduleStatus), padding: const EdgeInsets.symmetric(horizontal: 8)),
                       ),
                       DataCell(Row(
                         children: [
@@ -417,9 +397,7 @@ class _SchedulePageState extends State<SchedulePage> {
                             IconButton(
                               icon: Icon(Icons.description_outlined, size: 20, color: Colors.teal.shade700),
                               tooltip: 'Lihat Laporan Perbaikan',
-                              onPressed: () {
-                                Navigator.push(context, MaterialPageRoute(builder: (context) => RepairReportsPage(scheduleId: schedule['schedule_id']))).then((_) => _refreshSchedules());
-                              },
+                              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => RepairReportsPage(scheduleId: schedule['schedule_id']))).then((_) => _refreshSchedules()),
                             )
                           else if (isAdmin && !isAutoGenerated)
                             IconButton(
@@ -431,7 +409,8 @@ class _SchedulePageState extends State<SchedulePage> {
                             IconButton(
                               icon: Icon(Icons.delete, size: 20, color: Colors.red.shade700),
                               tooltip: 'Hapus Jadwal',
-                              onPressed: () => _deleteSchedule(schedule['schedule_id']),
+                              // ===[ PERBAIKAN: Panggil fungsi handler yang aman ]===
+                              onPressed: () => _handleDelete(schedule['schedule_id'], schedule['machine_id']),
                             ),
                         ],
                       )),
