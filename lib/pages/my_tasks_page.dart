@@ -136,7 +136,6 @@ class _MyTasksPageState extends State<MyTasksPage> {
                     padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
                     child: Text('TUGAS HARI INI & AKTIF', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)),
                   ),
-                  // --- PERBAIKAN WARNING: Menghapus .toList() ---
                   ...activeTasks.map((task) => _buildActiveTaskCard(task)),
                 ],
                 if (futureTemplates.isNotEmpty) ...[
@@ -144,7 +143,6 @@ class _MyTasksPageState extends State<MyTasksPage> {
                     padding: EdgeInsets.only(top: 24.0, bottom: 8.0, left: 8.0, right: 8.0),
                     child: Text('RENCANA TUGAS AKAN DATANG', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)),
                   ),
-                  // --- PERBAIKAN WARNING: Menghapus .toList() ---
                   ...futureTemplates.map((template) => _buildFutureTaskCard(template)),
                 ]
               ],
@@ -162,7 +160,6 @@ class _MyTasksPageState extends State<MyTasksPage> {
       color: Colors.grey.shade100,
       margin: const EdgeInsets.symmetric(vertical: 6),
       child: ListTile(
-        // --- PERBAIKAN ERROR: Mengganti ikon yang tidak valid ---
         leading: const Icon(Icons.event_note, color: Colors.purple),
         title: Text(template['task_description'], style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(template['machine_name'] ?? 'N/A'),
@@ -285,25 +282,35 @@ class _CreateOrEditReportDialog extends StatefulWidget {
   State<_CreateOrEditReportDialog> createState() => _CreateOrEditReportDialogState();
 }
 class _CreateOrEditReportDialogState extends State<_CreateOrEditReportDialog> {
-  final _notesController = TextEditingController(); final List<XFile> _images = []; final ImagePicker _picker = ImagePicker(); bool _isLoading = false;
+  final _notesController = TextEditingController();
+  // Perubahan: Hapus semua yang berhubungan dengan _images dan _picker
+  bool _isLoading = false;
   bool get _isEditing => widget.existingWorkLog != null;
+
   @override
-  void initState() { super.initState(); if (_isEditing) { _notesController.text = widget.existingWorkLog?['notes'] ?? ''; } }
-  Future<void> _pickImage() async { final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 60); if (image != null) { setState(() { _images.add(image); }); } }
+  void initState() {
+    super.initState();
+    if (_isEditing) {
+      _notesController.text = widget.existingWorkLog?['notes'] ?? '';
+    }
+  }
+
   Future<void> _submitReport() async {
     setState(() {_isLoading = true;});
     try {
-      final userId = Supabase.instance.client.auth.currentUser!.id; final List<String> photoUrls = [];
-      for (final image in _images) {
-        final imageExtension = image.path.split('.').last.toLowerCase(); final imageBytes = await image.readAsBytes();
-        final imagePath = '/$userId/${DateTime.now().millisecondsSinceEpoch}.$imageExtension';
-        await Supabase.instance.client.storage.from('repair_photos').uploadBinary(imagePath, imageBytes, fileOptions: FileOptions(contentType: 'image/$imageExtension'));
-        final url = Supabase.instance.client.storage.from('repair_photos').getPublicUrl(imagePath); photoUrls.add(url);
-      }
+      final userId = Supabase.instance.client.auth.currentUser!.id;
+      // Perubahan: Hapus logika upload gambar
+      // final List<String> photoUrls = [];
+
       if (_isEditing) {
         await Supabase.instance.client.from('work_logs').update({'status': 'Menunggu Persetujuan','notes': _notesController.text, 'rejection_reason': null,}).eq('id', widget.existingWorkLog!['id']);
       } else {
-        await Supabase.instance.client.from('repair_reports').insert({'schedule_id': widget.scheduleId,'completed_by': userId,'completion_notes': _notesController.text,'photo_urls': photoUrls,});
+        await Supabase.instance.client.from('repair_reports').insert({
+          'schedule_id': widget.scheduleId,
+          'completed_by': userId,
+          'completion_notes': _notesController.text,
+          'photo_urls': [], // Kirim array kosong
+        });
         await Supabase.instance.client.from('schedules').update({'status': 'Selesai'}).eq('id', widget.scheduleId);
         await Supabase.instance.client.from('work_logs').update({'status': 'Laporan Dibuat'}).eq('schedule_id', widget.scheduleId).eq('user_id', userId);
       }
@@ -314,14 +321,17 @@ class _CreateOrEditReportDialogState extends State<_CreateOrEditReportDialog> {
     } catch (e) { if (mounted) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal mengirim laporan: $e'), backgroundColor: Colors.red,)); }
     } finally { if (mounted) { setState(() { _isLoading = false; }); } }
   }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(_isEditing ? 'Edit Laporan Kerja' : 'Buat Laporan Perbaikan'),
       content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
         TextFormField(controller: _notesController, decoration: const InputDecoration(labelText: 'Catatan'), maxLines: 3), const SizedBox(height: 16),
-        const Text('Dokumentasi Foto:'), OutlinedButton.icon(onPressed: _pickImage, icon: const Icon(Icons.add_a_photo), label: const Text('Tambah Foto')),
-        if (_images.isNotEmpty) SizedBox(height: 100, child: ListView.builder(scrollDirection: Axis.horizontal, itemCount: _images.length, itemBuilder: (ctx, i) => Padding(padding: const EdgeInsets.all(4.0), child: Image.file(File(_images[i].path), width: 100, fit: BoxFit.cover)))),
+        // Perubahan: Hapus bagian ini
+        // const Text('Dokumentasi Foto:'),
+        // OutlinedButton.icon(onPressed: _pickImage, icon: const Icon(Icons.add_a_photo), label: const Text('Tambah Foto')),
+        // if (_images.isNotEmpty) SizedBox(height: 100, child: ListView.builder(scrollDirection: Axis.horizontal, itemCount: _images.length, itemBuilder: (ctx, i) => Padding(padding: const EdgeInsets.all(4.0), child: Image.file(File(_images[i].path), width: 100, fit: BoxFit.cover)))),
       ],)),
       actions: [ TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Batal')), ElevatedButton(onPressed: _submitReport, child: _isLoading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white)) : Text(_isEditing ? 'Kirim Ulang' : 'Kirim Laporan'))],
     );
