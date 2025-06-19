@@ -16,19 +16,12 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _usernameController =
-  TextEditingController(); // For sign up
 
   bool _isLoading = false;
-  bool _isLogin = true; // To toggle between Login and Sign Up views
   bool _passwordVisible = false; // To toggle password visibility
-
-  //===[PERUBAHAN 1: Menambahkan state untuk checkbox "Remember Me"]===
-  bool _rememberMe = true;
 
   final _supabase = Supabase.instance.client;
 
-  //===[PERUBAHAN 2: Menambahkan pengecekan sesi saat halaman dimuat]===
   @override
   void initState() {
     super.initState();
@@ -67,7 +60,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // ... (kode lainnya seperti _handleAuth, _forgotPassword, dispose tetap sama) ...
   Future<void> _handleAuth() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -78,23 +70,11 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      if (_isLogin) {
-        // --- SIGN IN ---
-        await _supabase.auth.signInWithPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-        );
-      } else {
-        // --- SIGN UP ---
-        await _supabase.auth.signUp(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-          data: {
-            'username': _usernameController.text.trim(),
-            'role': 'Operator'
-          },
-        );
-      }
+      // --- SIGN IN ---
+      await _supabase.auth.signInWithPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
 
       if (mounted) {
         // Fetch the user's profile after successful auth
@@ -195,7 +175,6 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _usernameController.dispose();
     super.dispose();
   }
 
@@ -220,7 +199,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  _isLogin ? 'Welcome Back!' : 'Create Account',
+                  'Welcome Back!',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 24,
@@ -229,33 +208,12 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  _isLogin ? 'Sign in to continue' : 'Sign up to get started',
+                const Text(
+                  'Sign in to continue',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 16, color: Colors.grey),
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
                 ),
                 const SizedBox(height: 40),
-                if (!_isLogin) ...[
-                  TextFormField(
-                    controller: _usernameController,
-                    decoration: InputDecoration(
-                      labelText: 'Username',
-                      hintText: 'Enter your username',
-                      prefixIcon: const Icon(Icons.person_outline),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your username';
-                      }
-                      return null;
-                    },
-                    textInputAction: TextInputAction.next,
-                  ),
-                  const SizedBox(height: 20.0),
-                ],
                 TextFormField(
                   controller: _emailController,
                   decoration: InputDecoration(
@@ -311,34 +269,18 @@ class _LoginPageState extends State<LoginPage> {
                   textInputAction: TextInputAction.done,
                 ),
 
-                //===[PERUBAHAN 3: Menambahkan widget Checkbox dan Tombol Lupa Password dalam satu baris]===
-                if (_isLogin)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: CheckboxListTile(
-                          value: _rememberMe,
-                          onChanged: (bool? value) {
-                            setState(() {
-                              if (value != null) _rememberMe = value;
-                            });
-                          },
-                          title: const Text('Remember Me'),
-                          controlAffinity: ListTileControlAffinity.leading,
-                          contentPadding: EdgeInsets.zero,
-                          dense: true,
-                        ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: _forgotPassword,
+                      child: Text(
+                        'Forgot Password?',
+                        style: TextStyle(color: Theme.of(context).primaryColor),
                       ),
-                      TextButton(
-                        onPressed: _forgotPassword,
-                        child: Text(
-                          'Forgot Password?',
-                          style: TextStyle(color: Theme.of(context).primaryColor),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
+                ),
 
                 const SizedBox(height: 20.0),
                 _isLoading
@@ -355,21 +297,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     foregroundColor: Colors.black,
                   ),
-                  child: Text(_isLogin ? 'Login' : 'Sign Up'),
-                ),
-                const SizedBox(height: 20.0),
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _isLogin = !_isLogin;
-                    });
-                  },
-                  child: Text(
-                    _isLogin
-                        ? 'Don\'t have an account? Sign Up'
-                        : 'Already have an account? Login',
-                    style: TextStyle(color: Theme.of(context).primaryColor),
-                  ),
+                  child: const Text('Login'),
                 ),
               ],
             ),
