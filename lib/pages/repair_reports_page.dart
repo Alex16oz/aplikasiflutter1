@@ -3,8 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-// Hapus import AppDrawer karena sudah tidak digunakan
-// import '../widgets/app_drawer.dart';
 
 class RepairReportsPage extends StatefulWidget {
   final int? scheduleId;
@@ -31,8 +29,11 @@ class _RepairReportsPageState extends State<RepairReportsPage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final args = ModalRoute.of(context)?.settings.arguments;
-    if (args is Map<String, dynamic>) {
-      _currentUserRole = args['role'];
+    if (args is Map) {
+      final safeArgs = Map<String, dynamic>.from(
+          args.map((key, value) => MapEntry(key.toString(), value))
+      );
+      _currentUserRole = safeArgs['role'];
     }
   }
 
@@ -42,20 +43,29 @@ class _RepairReportsPageState extends State<RepairReportsPage> {
     });
   }
 
-  Future<void> _verifyReport(int reportId, int scheduleId) async {
+  // ===[ PERBAIKAN DIMULAI DI SINI ]===
+  // 1. Tambahkan parameter machineId
+  Future<void> _verifyReport(int reportId, int scheduleId, int machineId) async {
     try {
+      // Step 1: Update status laporan perbaikan
       await _supabase.from('repair_reports').update({
         'status': 'Terverifikasi',
         'verified_by': _supabase.auth.currentUser!.id,
       }).eq('id', reportId);
 
+      // Step 2: Update status jadwal
       await _supabase.from('schedules').update({
         'status': 'Terverifikasi'
       }).eq('id', scheduleId);
 
+      // Step 3 (BARU): Update status mesin menjadi 'operasional'
+      await _supabase.from('machines').update({
+        'operational_status': 'operasional'
+      }).eq('id', machineId);
+
       if(mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Laporan berhasil diverifikasi!'),
+          content: Text('Laporan berhasil diverifikasi & status mesin diperbarui!'),
           backgroundColor: Colors.green,
         ));
         _refreshReports();
@@ -73,8 +83,9 @@ class _RepairReportsPageState extends State<RepairReportsPage> {
 
   Future<List<Map<String, dynamic>>> _fetchReports() async {
     try {
+      // 2. Pastikan machine_id diambil dari tabel schedules
       var query = _supabase.from('repair_reports').select(
-          '*, schedules!inner(id, machines(machine_name)), completed_by:profiles!repair_reports_completed_by_fkey(username)');
+          '*, schedules!inner(id, machine_id, machines(machine_name)), completed_by:profiles!repair_reports_completed_by_fkey(username)');
 
       if (widget.scheduleId != null) {
         query = query.eq('schedule_id', widget.scheduleId!);
@@ -93,6 +104,8 @@ class _RepairReportsPageState extends State<RepairReportsPage> {
       return [];
     }
   }
+  // ===[ PERBAIKAN SELESAI DI SINI ]===
+
 
   @override
   Widget build(BuildContext context) {
@@ -104,8 +117,6 @@ class _RepairReportsPageState extends State<RepairReportsPage> {
           IconButton(onPressed: _refreshReports, icon: const Icon(Icons.refresh))
         ],
       ),
-      // --- PERUBAHAN: Properti drawer dihapus ---
-      // drawer: widget.scheduleId == null ? const AppDrawer() : null,
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _reportsFuture,
         builder: (context, snapshot) {
@@ -130,6 +141,9 @@ class _RepairReportsPageState extends State<RepairReportsPage> {
               final operator = report['completed_by'];
               final photos = List<String>.from(report['photo_urls'] ?? []);
               final status = report['status'];
+
+              // 3. Ambil machine_id dari data schedule
+              final machineId = schedule?['machine_id'];
 
               return Card(
                 elevation: 3,
@@ -171,7 +185,16 @@ class _RepairReportsPageState extends State<RepairReportsPage> {
                           Chip(label: Text(status)),
                           if(isAdmin && status == 'Menunggu Verifikasi')
                             ElevatedButton.icon(
-                              onPressed: () => _verifyReport(report['id'], schedule['id']),
+                              // 4. Kirim machineId saat memanggil fungsi verify
+                              onPressed: () {
+                                if (machineId != null) {
+                                  _verifyReport(report['id'], schedule['id'], machineId);
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Error: Machine ID tidak ditemukan.'), backgroundColor: Colors.red)
+                                  );
+                                }
+                              },
                               icon: const Icon(Icons.check_circle_outline),
                               label: const Text('Verifikasi'),
                               style: ElevatedButton.styleFrom(backgroundColor: Colors.green),

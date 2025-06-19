@@ -27,6 +27,7 @@ class _SchedulePageState extends State<SchedulePage> {
     _schedulesFuture = _fetchSchedules();
   }
 
+  // ===[ PERBAIKAN DIMULAI DI SINI ]===
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -35,15 +36,24 @@ class _SchedulePageState extends State<SchedulePage> {
       final routeArgs = ModalRoute.of(context)?.settings.arguments;
       Map<String, dynamic>? args;
 
+      // Lakukan pengecekan tipe yang aman
       if (routeArgs is Map) {
-        args = Map<String, dynamic>.from(routeArgs);
+        // Konversi map secara manual untuk memastikan tipe data yang benar
+        args = Map<String, dynamic>.from(
+            routeArgs.map((key, value) => MapEntry(key.toString(), value))
+        );
       }
 
+      // Ekstrak data dari argumen yang sudah aman
       _currentUserRole = args?['role'] ?? (args?['user']?['role']);
-      _initialDamageReport = args?['damage_report'];
+
+      if (args?['damage_report'] is Map) {
+        _initialDamageReport = Map<String, dynamic>.from(args!['damage_report']);
+      }
 
       if (_initialDamageReport != null) {
-        _isInitialDialogShown = true;
+        _isInitialDialogShown = true; // Tandai agar tidak berjalan lagi
+        // Panggil dialog setelah frame pertama selesai dibangun
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             _showScheduleDialog(damageReport: _initialDamageReport);
@@ -52,6 +62,7 @@ class _SchedulePageState extends State<SchedulePage> {
       }
     }
   }
+  // ===[ PERBAIKAN SELESAI DI SINI ]===
 
   Future<void> _refreshSchedules() async {
     setState(() {
@@ -246,7 +257,6 @@ class _SchedulePageState extends State<SchedulePage> {
                   TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Batal')),
                   ElevatedButton(
                     onPressed: () async {
-                      // --- PERBAIKAN: LOGIKA SIMPAN DIMASUKKAN DI SINI ---
                       if (formKey.currentState!.validate() && selectedOperatorIds.isNotEmpty) {
                         try {
                           final scheduleData = {
@@ -259,7 +269,6 @@ class _SchedulePageState extends State<SchedulePage> {
                             // LOGIKA EDIT
                             await _supabase.from('schedules').update(scheduleData).eq('id', schedule['schedule_id']);
 
-                            // Hapus alokasi operator lama dan masukkan yang baru
                             await _supabase.from('schedule_operators').delete().eq('schedule_id', schedule['schedule_id']);
                             final operatorRecords = selectedOperatorIds.map((opId) => {
                               'schedule_id': schedule['schedule_id'],
@@ -275,16 +284,15 @@ class _SchedulePageState extends State<SchedulePage> {
                             }).select().single();
                             final newScheduleId = newSchedule['id'];
 
-                            // Alokasikan operator
                             final operatorRecords = selectedOperatorIds.map((opId) => {
                               'schedule_id': newScheduleId,
                               'operator_id': opId
                             }).toList();
                             await _supabase.from('schedule_operators').insert(operatorRecords);
 
-                            // Jika dibuat dari laporan kerusakan, update status laporan
                             if (damageReport != null) {
                               await _supabase.from('damage_reports').update({'status': 'Scheduled'}).eq('id', damageReport['id']);
+                              await _supabase.from('machines').update({'operational_status': 'perlu perbaikan'}).eq('id', damageReport['machine_id']);
                             }
                           }
 
@@ -292,7 +300,7 @@ class _SchedulePageState extends State<SchedulePage> {
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                                 content: Text('Jadwal berhasil ${isEditing ? 'diperbarui' : 'dibuat'}!'),
                                 backgroundColor: Colors.green));
-                            Navigator.of(dialogContext).pop();
+                            Navigator.of(dialogContext).pop(true); // Kirim 'true' untuk menandakan sukses
                           }
                         } catch (e) {
                           if (mounted) {
@@ -302,7 +310,6 @@ class _SchedulePageState extends State<SchedulePage> {
                           }
                         }
                       }
-                      // --- AKHIR DARI BLOK PERBAIKAN ---
                     },
                     child: const Text('Simpan Jadwal'),
                   ),
@@ -311,7 +318,11 @@ class _SchedulePageState extends State<SchedulePage> {
             },
           );
         },
-      ).then((_) => _refreshSchedules());
+      ).then((success) {
+        if (success == true) {
+          _refreshSchedules();
+        }
+      });
     } catch (e) {
       if(mounted) {
         Navigator.of(context).pop();

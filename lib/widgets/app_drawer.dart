@@ -9,17 +9,12 @@ import '../pages/user_management_page.dart';
 import '../pages/workshop_page.dart';
 import '../pages/schedule_page.dart';
 import '../pages/warehouse_page.dart';
-import '../pages/repair_reports_page.dart';
-import '../pages/damage_reports_page.dart';
-import '../pages/attendance_reports_page.dart';
+import '../pages/reports_hub_page.dart';
 import '../pages/settings_page.dart';
 import '../pages/about_page.dart';
 import '../pages/my_tasks_page.dart';
 import '../pages/work_log_approval_page.dart';
-import '../pages/reports_hub_page.dart';
-// --- PENAMBAHAN BARU ---
 import '../pages/maintenance_templates_page.dart';
-// -----------------------
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -27,12 +22,14 @@ class AppDrawer extends StatelessWidget {
   void _navigateToPage(BuildContext context, String routeName, {bool replace = false, Object? arguments}) {
     if (!context.mounted) return;
 
+    // Tutup drawer jika terbuka
     if (Navigator.canPop(context)) {
       Navigator.pop(context);
     }
 
     final String? currentRouteName = ModalRoute.of(context)?.settings.name;
 
+    // Hanya navigasi jika halaman tujuan berbeda dengan halaman saat ini
     if (currentRouteName != routeName) {
       if (replace) {
         Navigator.pushReplacementNamed(context, routeName, arguments: arguments);
@@ -45,7 +42,18 @@ class AppDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String? currentRouteName = ModalRoute.of(context)?.settings.name;
-    final user = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+    // ===[ PERBAIKAN DIMULAI DI SINI ]===
+    final routeArgs = ModalRoute.of(context)?.settings.arguments;
+    Map<String, dynamic>? user;
+
+    // Lakukan pengecekan dan konversi tipe data dengan aman
+    if (routeArgs is Map) {
+      user = Map<String, dynamic>.from(
+          routeArgs.map((key, value) => MapEntry(key.toString(), value))
+      );
+    }
+    // ===[ PERBAIKAN SELESAI DI SINI ]===
 
     final String username = user?['username'] ?? 'Guest';
     final String email = user?['email'] ?? 'guest@example.com';
@@ -139,7 +147,6 @@ class AppDrawer extends StatelessWidget {
             onTap: () => _navigateToPage(context, WarehousePage.routeName, replace: true, arguments: user),
           ),
 
-          // --- PENAMBAHAN BAGIAN MENU BARU ---
           if (userRole == 'Admin') ...[
             const _DrawerSectionHeader(title: 'MANAJEMEN PERAWATAN'),
             ListTile(
@@ -151,7 +158,6 @@ class AppDrawer extends StatelessWidget {
               },
             ),
           ],
-          // ---------------------------------
 
           const _DrawerSectionHeader(title: 'REPORTS'),
           ListTile(
@@ -183,6 +189,7 @@ class AppDrawer extends StatelessWidget {
             onTap: () async {
               await Supabase.instance.client.auth.signOut();
               if (context.mounted) {
+                // Saat logout, navigasi ke halaman login tanpa argumen
                 _navigateToPage(context, LoginPage.routeName, replace: true);
               }
             },
