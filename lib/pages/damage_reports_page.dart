@@ -15,7 +15,7 @@ class DamageReportsPage extends StatefulWidget {
 class _DamageReportsPageState extends State<DamageReportsPage> {
   late Future<List<Map<String, dynamic>>> _reportsFuture;
   final _supabase = Supabase.instance.client;
-  String? _currentUserRole; // Untuk menyimpan role pengguna
+  String? _currentUserRole;
 
   @override
   void initState() {
@@ -23,17 +23,14 @@ class _DamageReportsPageState extends State<DamageReportsPage> {
     _reportsFuture = _fetchReports();
   }
 
-  // --- PENAMBAHAN: Mengambil role dari argumen navigasi ---
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is Map) {
-      // Konversi argumen dengan aman
       final safeArgs = Map<String, dynamic>.from(
           args.map((key, value) => MapEntry(key.toString(), value))
       );
-      // Set _currentUserRole dari argumen
       setState(() {
         _currentUserRole = safeArgs['role'];
       });
@@ -61,19 +58,19 @@ class _DamageReportsPageState extends State<DamageReportsPage> {
     }
   }
 
-  // --- FUNGSI BARU: Untuk menghapus laporan ---
+  // --- [PEMBARUAN FINAL LOGIKA PENGHAPUSAN] ---
   Future<void> _deleteReport(int reportId) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Konfirmasi Hapus'),
-        content: const Text('Apakah Anda yakin ingin menghapus laporan kerusakan ini?'),
+        content: const Text('Apakah Anda yakin ingin menghapus laporan ini beserta semua jadwal yang terkait dengannya? Aksi ini tidak dapat dibatalkan.'),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Batal')),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Hapus'),
+            child: const Text('Hapus Permanen'),
           ),
         ],
       ),
@@ -81,22 +78,28 @@ class _DamageReportsPageState extends State<DamageReportsPage> {
 
     if (confirmed == true) {
       try {
-        await _supabase.from('damage_reports').delete().eq('id', reportId);
+        // Memanggil fungsi RPC di Supabase untuk menangani penghapusan secara transaksional
+        await _supabase.rpc('delete_damage_report_and_schedule', params: {
+          'report_id_to_delete': reportId
+        });
+
         if(mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Laporan berhasil dihapus'), backgroundColor: Colors.green)
+              const SnackBar(content: Text('Laporan dan jadwal terkait berhasil dihapus.'), backgroundColor: Colors.green)
           );
           _refreshReports(); // Refresh daftar laporan setelah hapus
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Gagal menghapus laporan: $e'), backgroundColor: Colors.red)
+              SnackBar(content: Text('Gagal menghapus: $e. Pastikan fungsi RPC "delete_damage_report_and_schedule" sudah dibuat di Supabase.'), backgroundColor: Colors.red, duration: const Duration(seconds: 5),)
           );
         }
       }
     }
   }
+  // --- [AKHIR PEMBARUAN] ---
+
 
   String _formatDate(String dateString) {
     try {
@@ -108,7 +111,6 @@ class _DamageReportsPageState extends State<DamageReportsPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Tentukan apakah pengguna adalah admin
     final bool isAdmin = _currentUserRole == 'Admin';
 
     return Scaffold(
@@ -170,7 +172,6 @@ class _DamageReportsPageState extends State<DamageReportsPage> {
                             ),
                             Row(
                               children: [
-                                // --- PENAMBAHAN: Tombol Hapus hanya untuk Admin ---
                                 if(isAdmin)
                                   IconButton(
                                     icon: const Icon(Icons.delete_outline, color: Colors.red),
@@ -186,7 +187,7 @@ class _DamageReportsPageState extends State<DamageReportsPage> {
                                         SchedulePage.routeName,
                                         arguments: {
                                           'damage_report': report,
-                                          'role': _currentUserRole, // Kirim role ke halaman selanjutnya
+                                          'role': _currentUserRole,
                                         }
                                     );
                                     if (result == true && mounted) {
