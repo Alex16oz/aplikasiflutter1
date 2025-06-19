@@ -18,7 +18,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
 
   bool _isLoading = false;
-  bool _passwordVisible = false; // To toggle password visibility
+  bool _passwordVisible = false; // Untuk mengganti visibilitas password
 
   final _supabase = Supabase.instance.client;
 
@@ -28,7 +28,7 @@ class _LoginPageState extends State<LoginPage> {
     _redirectOnSession();
   }
 
-  /// Checks for an active session and redirects to the dashboard if found.
+  /// Memeriksa sesi aktif dan mengarahkan ke dashboard jika ditemukan.
   Future<void> _redirectOnSession() async {
     // Memberi sedikit jeda untuk memastikan widget sudah siap
     await Future.delayed(Duration.zero);
@@ -70,39 +70,39 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      // --- SIGN IN ---
+      // --- PROSES MASUK ---
       await _supabase.auth.signInWithPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
       if (mounted) {
-        // Fetch the user's profile after successful auth
+        // Ambil profil pengguna setelah berhasil otentikasi
         final userId = _supabase.auth.currentUser!.id;
 
-        // **IMPROVEMENT**: Use .maybeSingle() to prevent errors if profile is missing.
+        // **PERBAIKAN**: Gunakan .maybeSingle() untuk mencegah error jika profil hilang.
         final profileResponse = await _supabase
             .from('profiles')
             .select()
             .eq('id', userId)
             .maybeSingle();
 
-        // **IMPROVEMENT**: Check if the profile exists before navigating.
+        // **PERBAIKAN**: Periksa apakah profil ada sebelum navigasi.
         if (profileResponse == null) {
           throw const PostgrestException(
             message:
-            'Login successful, but user profile not found. Please contact an administrator.',
+            'Login berhasil, tetapi profil pengguna tidak ditemukan. Silakan hubungi administrator.',
           );
         }
 
-        // Navigate to dashboard with user and profile data
+        // Navigasi ke dashboard dengan data pengguna dan profil
         Navigator.pushReplacementNamed(
           context,
           DashboardPage.routeName,
           arguments: {
-            ...profileResponse, // Contains id, username, role
+            ...profileResponse, // Berisi id, username, role
             'email':
-            _supabase.auth.currentUser!.email, // Add email from auth user
+            _supabase.auth.currentUser!.email, // Tambahkan email dari auth user
           },
         );
       }
@@ -110,7 +110,7 @@ class _LoginPageState extends State<LoginPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(error.message),
+            content: Text('Gagal masuk: ${error.message}'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -128,7 +128,7 @@ class _LoginPageState extends State<LoginPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('An unexpected error occurred: $error'),
+            content: Text('Terjadi kesalahan tidak terduga: $error'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -147,7 +147,7 @@ class _LoginPageState extends State<LoginPage> {
     if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Please enter your email to reset password.')),
+            content: Text('Silakan masukkan email Anda untuk mereset kata sandi.')),
       );
       return;
     }
@@ -156,7 +156,7 @@ class _LoginPageState extends State<LoginPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Password reset link sent! Check your email.')),
+              content: Text('Tautan reset kata sandi telah dikirim! Periksa email Anda.')),
         );
       }
     } on AuthException catch (error) {
@@ -191,7 +191,6 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                // ... (Icon dan Teks Judul)
                 Icon(
                   Icons.lock_outline,
                   size: 80,
@@ -199,7 +198,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'Welcome Back!',
+                  'Selamat Datang Kembali!',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 24,
@@ -209,7 +208,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Sign in to continue',
+                  'Masuk untuk melanjutkan',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 16, color: Colors.grey),
                 ),
@@ -218,7 +217,7 @@ class _LoginPageState extends State<LoginPage> {
                   controller: _emailController,
                   decoration: InputDecoration(
                     labelText: 'Email',
-                    hintText: 'Enter your email',
+                    hintText: 'Masukkan email Anda',
                     prefixIcon: const Icon(Icons.email_outlined),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8.0),
@@ -229,7 +228,7 @@ class _LoginPageState extends State<LoginPage> {
                     if (value == null ||
                         value.isEmpty ||
                         !value.contains('@')) {
-                      return 'Please enter a valid email';
+                      return 'Harap masukkan email yang valid';
                     }
                     return null;
                   },
@@ -239,8 +238,8 @@ class _LoginPageState extends State<LoginPage> {
                 TextFormField(
                   controller: _passwordController,
                   decoration: InputDecoration(
-                    labelText: 'Password',
-                    hintText: 'Enter your password',
+                    labelText: 'Kata Sandi',
+                    hintText: 'Masukkan kata sandi Anda',
                     prefixIcon: const Icon(Icons.lock_outline_rounded),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8.0),
@@ -261,7 +260,7 @@ class _LoginPageState extends State<LoginPage> {
                   obscureText: !_passwordVisible,
                   validator: (value) {
                     if (value == null || value.isEmpty || value.length < 6) {
-                      return 'Password must be at least 6 characters long';
+                      return 'Kata sandi minimal 6 karakter';
                     }
                     return null;
                   },
@@ -275,7 +274,7 @@ class _LoginPageState extends State<LoginPage> {
                     TextButton(
                       onPressed: _forgotPassword,
                       child: Text(
-                        'Forgot Password?',
+                        'Lupa Kata Sandi?',
                         style: TextStyle(color: Theme.of(context).primaryColor),
                       ),
                     ),
@@ -297,7 +296,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     foregroundColor: Colors.black,
                   ),
-                  child: const Text('Login'),
+                  child: const Text('Masuk'),
                 ),
               ],
             ),

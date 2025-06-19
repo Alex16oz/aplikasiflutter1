@@ -52,7 +52,7 @@ class _DamageReportsPageState extends State<DamageReportsPage> {
       return List<Map<String, dynamic>>.from(response);
     } catch(e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error fetching reports: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal memuat laporan: $e")));
       }
       return [];
     }
@@ -103,9 +103,9 @@ class _DamageReportsPageState extends State<DamageReportsPage> {
 
   String _formatDate(String dateString) {
     try {
-      return DateFormat('dd MMM yy, HH:mm').format(DateTime.parse(dateString));
+      return DateFormat('dd MMM yy, HH:mm', 'id_ID').format(DateTime.parse(dateString));
     } catch(e) {
-      return 'Invalid Date';
+      return 'Tanggal Tidak Valid';
     }
   }
 
@@ -115,12 +115,12 @@ class _DamageReportsPageState extends State<DamageReportsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Damage Reports'),
+        title: const Text('Laporan Kerusakan'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _refreshReports,
-            tooltip: 'Refresh',
+            tooltip: 'Segarkan',
           )
         ],
       ),
@@ -131,10 +131,10 @@ class _DamageReportsPageState extends State<DamageReportsPage> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(child: Text('Gagal memuat: ${snapshot.error}'));
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No pending damage reports.'));
+            return const Center(child: Text('Tidak ada laporan kerusakan yang tertunda.'));
           }
 
           final reports = snapshot.data!;
@@ -157,11 +157,11 @@ class _DamageReportsPageState extends State<DamageReportsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Machine: ${machine?['machine_name'] ?? 'N/A'}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        Text('Mesin: ${machine?['machine_name'] ?? 'N/A'}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                         const Divider(),
-                        Text('Description: ${report['description']}'),
+                        Text('Deskripsi: ${report['description']}'),
                         const SizedBox(height: 8),
-                        Text('Reported by: ${profile?['username'] ?? 'N/A'} on ${_formatDate(report['created_at'])}', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                        Text('Dilaporkan oleh: ${profile?['username'] ?? 'N/A'} pada ${_formatDate(report['created_at'])}', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
                         const SizedBox(height: 12),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -195,7 +195,7 @@ class _DamageReportsPageState extends State<DamageReportsPage> {
                                     }
                                   },
                                   icon: const Icon(Icons.calendar_today, size: 16),
-                                  label: const Text('Schedule'),
+                                  label: const Text('Jadwalkan'),
                                   style: ElevatedButton.styleFrom(
                                     foregroundColor: Colors.white,
                                     backgroundColor: isScheduled ? Colors.grey : Theme.of(context).primaryColor,

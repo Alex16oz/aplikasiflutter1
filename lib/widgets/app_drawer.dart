@@ -43,20 +43,17 @@ class AppDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     final String? currentRouteName = ModalRoute.of(context)?.settings.name;
 
-    // ===[ PERBAIKAN DIMULAI DI SINI ]===
     final routeArgs = ModalRoute.of(context)?.settings.arguments;
     Map<String, dynamic>? user;
 
-    // Lakukan pengecekan dan konversi tipe data dengan aman
     if (routeArgs is Map) {
       user = Map<String, dynamic>.from(
           routeArgs.map((key, value) => MapEntry(key.toString(), value))
       );
     }
-    // ===[ PERBAIKAN SELESAI DI SINI ]===
 
-    final String username = user?['username'] ?? 'Guest';
-    final String email = user?['email'] ?? 'guest@example.com';
+    final String username = user?['username'] ?? 'Tamu';
+    final String email = user?['email'] ?? 'tamu@example.com';
     final String userRole = user?['role'] ?? '';
 
     return Drawer(
@@ -79,8 +76,8 @@ class AppDrawer extends StatelessWidget {
             decoration: BoxDecoration(color: Theme.of(context).primaryColor),
           ),
           ListTile(
-            leading: const Icon(Icons.dashboard),
-            title: const Text('Dashboard'),
+            leading: const Icon(Icons.dashboard_outlined),
+            title: const Text('Dasbor'),
             selected: currentRouteName == DashboardPage.routeName,
             onTap: () => _navigateToPage(context, DashboardPage.routeName, replace: true, arguments: user),
           ),
@@ -105,23 +102,23 @@ class AppDrawer extends StatelessWidget {
             ),
           ],
 
-          const _DrawerSectionHeader(title: 'USER'),
+          const _DrawerSectionHeader(title: 'PENGGUNA'),
           ListTile(
             leading: const Icon(Icons.person_outline),
-            title: const Text('User Profile'),
+            title: const Text('Profil Pengguna'),
             selected: currentRouteName == UserProfilePage.routeName,
             onTap: () => _navigateToPage(context, UserProfilePage.routeName, replace: true, arguments: user),
           ),
           ListTile(
             leading: const Icon(Icons.check_circle_outline),
-            title: const Text('Attendance'),
+            title: const Text('Absensi'),
             selected: currentRouteName == AttendancePage.routeName,
             onTap: () => _navigateToPage(context, AttendancePage.routeName, replace: true, arguments: user),
           ),
           if (userRole == 'Admin') ...[
             ListTile(
               leading: const Icon(Icons.manage_accounts_outlined),
-              title: const Text('User Management'),
+              title: const Text('Manajemen Pengguna'),
               selected: currentRouteName == UserManagementPage.routeName,
               onTap: () => _navigateToPage(context, UserManagementPage.routeName, replace: true, arguments: user),
             ),
@@ -129,20 +126,20 @@ class AppDrawer extends StatelessWidget {
 
           const _DrawerSectionHeader(title: 'DATA'),
           ListTile(
-            leading: const Icon(Icons.store_mall_directory),
+            leading: const Icon(Icons.store_mall_directory_outlined),
             title: const Text('Workshop'),
             selected: currentRouteName == WorkshopPage.routeName,
             onTap: () => _navigateToPage(context, WorkshopPage.routeName, replace: true, arguments: user),
           ),
           ListTile(
-            leading: const Icon(Icons.schedule),
-            title: const Text('Schedule'),
+            leading: const Icon(Icons.schedule_outlined),
+            title: const Text('Jadwal'),
             selected: currentRouteName == SchedulePage.routeName,
             onTap: () => _navigateToPage(context, SchedulePage.routeName, replace: true, arguments: user),
           ),
           ListTile(
-            leading: const Icon(Icons.build_circle_outlined),
-            title: const Text('Warehouse'),
+            leading: const Icon(Icons.inventory_2_outlined),
+            title: const Text('Gudang'),
             selected: currentRouteName == WarehousePage.routeName,
             onTap: () => _navigateToPage(context, WarehousePage.routeName, replace: true, arguments: user),
           ),
@@ -159,7 +156,7 @@ class AppDrawer extends StatelessWidget {
             ),
           ],
 
-          const _DrawerSectionHeader(title: 'REPORTS'),
+          const _DrawerSectionHeader(title: 'LAPORAN'),
           ListTile(
             leading: const Icon(Icons.assessment_outlined),
             title: const Text('Pusat Laporan'),
@@ -167,17 +164,17 @@ class AppDrawer extends StatelessWidget {
             onTap: () => _navigateToPage(context, ReportsHubPage.routeName, replace: true, arguments: user),
           ),
 
-          const _DrawerSectionHeader(title: 'SYSTEM'),
+          const _DrawerSectionHeader(title: 'SISTEM'),
           ListTile(
-            leading: const Icon(Icons.settings),
-            title: const Text('Settings'),
+            leading: const Icon(Icons.settings_outlined),
+            title: const Text('Pengaturan'),
             selected: currentRouteName == SettingsPage.routeName,
             onTap: () => _navigateToPage(context, SettingsPage.routeName, replace: true, arguments: user),
           ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.info_outline),
-            title: const Text('About'),
+            title: const Text('Tentang Aplikasi'),
             selected: currentRouteName == AboutPage.routeName,
             onTap: () => _navigateToPage(context, AboutPage.routeName, replace: true, arguments: user),
           ),
@@ -185,11 +182,10 @@ class AppDrawer extends StatelessWidget {
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout),
-            title: const Text('Logout'),
+            title: const Text('Keluar'),
             onTap: () async {
               await Supabase.instance.client.auth.signOut();
               if (context.mounted) {
-                // Saat logout, navigasi ke halaman login tanpa argumen
                 _navigateToPage(context, LoginPage.routeName, replace: true);
               }
             },
